@@ -1,0 +1,148 @@
+%YAML 1.2
+---
+# mode: fedavg
+mode: centralized
+# mode: debug
+# desc: "FedAvg run with twocnn model and cifar10 dataset, IID, 40 rounds, 5 epochs"
+desc: "Centralized training w epochs and rounds interchanged. sanity check"
+
+
+defaults:
+  - base_config
+  - hydra: custom
+  - server: baseflower
+  - strategy: base
+  # - strategy: fedavgmanual
+  # - strategy: fedstdev
+  # - strategy: fedgradstd
+  # - strategy: fedopt
+  # - strategy: cgsv
+  # - client: fedstdev
+  # - client: fedgradstd
+  - client: baseflower
+  - dataset: cifar10
+  # - dataset: bloodmnist
+  # - dataset: fedisic
+  # - model: resnet18gn
+  # - model: resnet18
+  - model: twocnn
+  - _self_
+
+simulator:
+  # Simulator Mode: Takes arguments 'federated', 'standalone' or 'centralized', 'flower'
+  # mode: standalone
+  mode: centralized
+  # mode: federated
+  # mode: flower 
+  seed: 42
+  use_tensorboard: false
+  use_wandb: true
+  save_csv: true
+  out_prefix: ''
+  num_clients: 6
+  num_rounds: 1
+  checkpoint_every: 10
+  eval_type: both
+  eval_every: 1
+  flwr_resources:
+    num_cpus: 2
+    num_gpus: 0 #TODO: Couple this with device init
+
+train_cfg:
+  epochs: 200
+  device: auto
+  batch_size: 128
+  eval_batch_size: 128
+  lr: 0.01
+  lr_decay: 0.977
+  optimizer:
+    _target_: torch.optim.SGD
+    _partial_: true
+    lr: ${train_cfg.lr}
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+  lr_scheduler:
+    _target_: torch.optim.lr_scheduler.ExponentialLR
+    _partial_: true
+    gamma: ${train_cfg.lr_decay}
+  metric_cfg:
+    eval_metrics: ['acc1']
+    file_prefix: ''
+    log_to_file: false
+
+# CONFIG OVERRIDES
+
+dataset:
+  subsample: false
+  subsample_fraction: 1.0 # Fraction of the dataset to use. Only works when subsample is true
+  split_conf:
+    # split_type: n_label_flipped_clients
+    # split_type: n_distinct_label_flipped_clients
+    # split_type: n_noisy_clients
+    # split_type: n_distinct_noisy_clients
+    # split_type: patho
+    # split_type: dirichlet
+    # split_type: one_imbalanced_client
+    split_type: iid
+    # split_type: one_noisy_client
+    num_splits: ${simulator.num_clients}
+    num_class_per_client: 3 # classes per client for patho split type
+    # num_patho_clients: 1
+    num_patho_clients: 5
+    dirichlet_alpha: 1.0
+    noise:
+      mu: 0.0
+      sigma: 0.5
+      flip_percent: 0.5
+      # mu: [0.0, 0.0, 0.0, 0.0, 0.0]
+      # sigma: [1.0, 0.75, 0.5, 0.25, 0.1]
+      # flip_percent: [0.9, 0.75, 0.5, 0.25, 0.1]
+
+model_init:
+  init_type: xavier
+  init_gain: 1.0
+
+
+# client:
+#   cfg:
+#     data_shuffle: True
+
+
+
+# ########## OVERRIDES END HERE ##########
+# Log Configuration: Additional configurations to be copied in the results summary section. Must be a valid configuration from the config tree.
+# Experiment mode: Switch between debug and experiment methods
+# mode: fedstdev_centralized
+# mode: centralized
+# mode: fedavg_patho
+# mode: fedavg_dirichlet
+# mode: fedavgmanual
+# mode: standalone
+# mode: fedstdev
+# mode: fedgradstd
+# mode: fedgradstd_patho
+# mode: fedgradstd_dirichlet
+# mode: fedopt_patho
+# mode: fedopt
+# mode: debug
+# mode: cgsv
+# desc: 'Centralized run with three label flipped client'
+# desc: 'Centralized run with three noisy client'
+# desc: 'Fedgradstd client dirichlet split with equal weighting strategy'
+# desc: 'Fedgradstd client with equal weighting strategy'
+# desc: 'Fedgradstd dry runs for analyzing different metrics with three label flipped clients and 25 % data'
+# desc: 'Fedgradstd run with dirichlet split,5 shuffles only'
+# desc: 'Fedavg run with bloodmnist iid'
+# desc: 'Centralized run with bloodmnist iid'
+
+# desc: Fedopt with patho split
+# desc: CGSV run with three label fliped clients
+# desc: 'Fedavg run with dirichlet split, alpha 10000, checking dirichlet correctness'
+# desc: 'Fedavg manual run with three noisy clients'
+
+# desc: 'Fedavg manual run with three label flipped client'
+
+
+log_conf: []
+
+...

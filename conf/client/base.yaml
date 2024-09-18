@@ -1,0 +1,12 @@
+defaults:
+  - client_schema
+  - cfg: base_client
+  - _self_
+
+_target_: fedora.client.baseclient.BaseClient
+_partial_: true
+cfg:
+  start_epoch: 0
+  data_shuffle: false
+train_cfg: ${train_cfg}
+

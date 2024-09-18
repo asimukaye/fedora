@@ -1,0 +1,101 @@
+%YAML 1.2
+---
+mode: ties
+# mode: debug
+desc: "Ties with twocnn model and cifar10 dataset, IID, K = 0.2, lamba = 1.5, 200 rounds, 1 epochs"
+
+
+defaults:
+  - base_config
+  - hydra: custom
+  - server: baseflower
+  - strategy: ties
+  - client: baseflower
+  - dataset: cifar10
+  # - dataset: bloodmnist
+  # - dataset: fedisic
+  # - model: resnet18gn
+  # - model: resnet18
+  - model: twocnn
+  - _self_
+
+simulator:
+  # Simulator Mode: Takes arguments 'federated', 'standalone' or 'centralized', 'flower'
+  mode: federated
+  # mode: flower 
+  seed: 42
+  use_tensorboard: false
+  use_wandb: true
+  save_csv: true
+  out_prefix: ''
+  num_clients: 6
+  num_rounds: 200
+  checkpoint_every: 10
+  eval_type: both
+  eval_every: 1
+  flwr_resources:
+    num_cpus: 2
+    num_gpus: 0 #TODO: Couple this with device init
+
+train_cfg:
+  epochs: 1
+  device: auto
+  batch_size: 128
+  eval_batch_size: 128
+  lr: 0.01
+  lr_decay: 0.977
+  optimizer:
+    _target_: torch.optim.SGD
+    _partial_: true
+    lr: ${train_cfg.lr}
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+  lr_scheduler:
+    _target_: torch.optim.lr_scheduler.ExponentialLR
+    _partial_: true
+    gamma: ${train_cfg.lr_decay}
+  metric_cfg:
+    eval_metrics: ['acc1']
+    file_prefix: ''
+    log_to_file: false
+
+# CONFIG OVERRIDES
+
+dataset:
+  subsample: false
+  subsample_fraction: 1.0 # Fraction of the dataset to use. Only works when subsample is true
+  split_conf:
+    # split_type: n_label_flipped_clients
+    # split_type: n_distinct_label_flipped_clients
+    # split_type: n_noisy_clients
+    # split_type: n_distinct_noisy_clients
+    # split_type: patho
+    # split_type: dirichlet
+    # split_type: one_imbalanced_client
+    split_type: iid
+    # split_type: one_noisy_client
+    num_splits: ${simulator.num_clients}
+    num_class_per_client: 3 # classes per client for patho split type
+    # num_patho_clients: 1
+    num_patho_clients: 5
+    dirichlet_alpha: 1.0
+    noise:
+      mu: 0.0
+      sigma: 0.5
+      flip_percent: 0.5
+      # mu: [0.0, 0.0, 0.0, 0.0, 0.0]
+      # sigma: [1.0, 0.75, 0.5, 0.25, 0.1]
+      # flip_percent: [0.9, 0.75, 0.5, 0.25, 0.1]
+
+model_init:
+  init_type: xavier
+  init_gain: 1.0
+
+
+# client:
+#   cfg:
+#     data_shuffle: True
+
+log_conf: []
+
+...

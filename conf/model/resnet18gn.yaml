@@ -1,0 +1,3 @@
+_target_: fedora.models.resnet_gn.ResNet18GN
+hidden_size: 64
+num_groups: 2

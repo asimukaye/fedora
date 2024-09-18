@@ -1,0 +1,12 @@
+defaults:
+  - client_schema
+  - cfg: fedstdev_client
+  - _self_
+
+_target_: fedora.client.fedstdevclient.FedstdevClient
+_partial_: true
+cfg:
+  start_epoch: 0
+  data_shuffle: false
+  seeds: [15, 25, 35, 45, 55]
+train_cfg: ${train_cfg}

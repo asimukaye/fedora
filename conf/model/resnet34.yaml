@@ -1,0 +1,2 @@
+_target_: fedora.models.resnet.ResNet34
+hidden_size: 64
