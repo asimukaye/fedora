@@ -3,8 +3,8 @@
 # mode: fedavg
 mode: centralized
 # mode: debug
-# desc: "FedAvg run with twocnn model and cifar10 dataset, IID, 40 rounds, 5 epochs"
-desc: "Centralized training w epochs and rounds interchanged. sanity check"
+desc: "FedAvg run with twocnn model and cifar10 dataset, patho 3, 200 rounds, 1 epochs"
+# desc: "Centralized training w epochs and rounds interchanged. sanity check"
 
 
 defaults:
@@ -31,8 +31,8 @@ defaults:
 simulator:
   # Simulator Mode: Takes arguments 'federated', 'standalone' or 'centralized', 'flower'
   # mode: standalone
-  mode: centralized
-  # mode: federated
+  # mode: centralized
+  mode: federated
   # mode: flower 
   seed: 42
   use_tensorboard: false
@@ -40,16 +40,16 @@ simulator:
   save_csv: true
   out_prefix: ''
   num_clients: 6
-  num_rounds: 1
+  num_rounds: 200
   checkpoint_every: 10
   eval_type: both
   eval_every: 1
   flwr_resources:
     num_cpus: 2
-    num_gpus: 0 #TODO: Couple this with device init
+    num_gpus: 0.5 #TODO: Couple this with device init
 
 train_cfg:
-  epochs: 200
+  epochs: 1
   device: auto
   batch_size: 128
   eval_batch_size: 128
@@ -80,16 +80,16 @@ dataset:
     # split_type: n_distinct_label_flipped_clients
     # split_type: n_noisy_clients
     # split_type: n_distinct_noisy_clients
-    # split_type: patho
+    split_type: patho
     # split_type: dirichlet
     # split_type: one_imbalanced_client
-    split_type: iid
+    # split_type: iid
     # split_type: one_noisy_client
     num_splits: ${simulator.num_clients}
     num_class_per_client: 3 # classes per client for patho split type
-    # num_patho_clients: 1
-    num_patho_clients: 5
-    dirichlet_alpha: 1.0
+    # num_noisy_clients: 1
+    num_noisy_clients: 3
+    dirichlet_alpha: 10.0
     noise:
       mu: 0.0
       sigma: 0.5

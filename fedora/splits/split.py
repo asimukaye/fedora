@@ -100,34 +100,34 @@ def get_client_datasets(cfg: SplitConfig, train_dataset: Dataset, test_dataset, 
             train, test = client_datasets[0]
             patho_train = LabelNoiseSubset(train, cfg.noise.flip_percent)
             if match_train_distribution:
-                test = LabelFlippedSubset(test, cfg.noise.flip_percent)
+                test = LabelNoiseSubset(test, cfg.noise.flip_percent)
             client_datasets[0] = patho_train, test
         case 'n_label_flipped_clients':
-            for idx in range(cfg.num_patho_clients):
+            for idx in range(cfg.num_noisy_clients):
                 train, test = client_datasets[idx]
                 patho_train = LabelNoiseSubset(train, cfg.noise.flip_percent)
                 if match_train_distribution:
-                    test = LabelFlippedSubset(test, cfg.noise.flip_percent)
+                    test = LabelNoiseSubset(test, cfg.noise.flip_percent)
                 client_datasets[idx] = patho_train, test
         case 'n_noisy_clients':
-            for idx in range(cfg.num_patho_clients):
+            for idx in range(cfg.num_noisy_clients):
                 train, test = client_datasets[idx]
                 patho_train = NoisySubset(train, cfg.noise.mu, cfg.noise.sigma)
                 if match_train_distribution:
                     test = NoisySubset(test, cfg.noise.mu, cfg.noise.sigma)
                 client_datasets[idx] = patho_train, test
         case 'n_distinct_noisy_clients':
-            assert len(cfg.noise.mu) >= cfg.num_patho_clients, 'Number of noise means should match number of patho clients'
-            assert len(cfg.noise.sigma) >= cfg.num_patho_clients, 'Number of noise sigmas should match number of patho clients'
-            for idx in range(cfg.num_patho_clients):
+            assert len(cfg.noise.mu) >= cfg.num_noisy_clients, 'Number of noise means should match number of patho clients'
+            assert len(cfg.noise.sigma) >= cfg.num_noisy_clients, 'Number of noise sigmas should match number of patho clients'
+            for idx in range(cfg.num_noisy_clients):
                 train, test = client_datasets[idx]
                 patho_train = NoisySubset(train, cfg.noise.mu[idx], cfg.noise.sigma[idx])
                 if match_train_distribution:
                     test = NoisySubset(test, cfg.noise.mu[idx], cfg.noise.sigma[idx])
                 client_datasets[idx] = patho_train, test
         case 'n_distinct_label_flipped_clients':
-            assert len(cfg.noise.flip_percent) >= cfg.num_patho_clients, 'Number of noise flip percent should match number of patho clients'
-            for idx in range(cfg.num_patho_clients):
+            assert len(cfg.noise.flip_percent) >= cfg.num_noisy_clients, 'Number of noise flip percent should match number of patho clients'
+            for idx in range(cfg.num_noisy_clients):
                 train, test = client_datasets[idx]
                 patho_train = LabelFlippedSubset(train, cfg.noise.flip_percent[idx])
                 if match_train_distribution:

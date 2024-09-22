@@ -8,6 +8,6 @@ cfg:
   train_fraction: 1.0
   eval_fraction: 1.0
   K: 0.2
-  lamda: 1.5
+  lamda: 1.0
   merge_func: "dis-mean"
 

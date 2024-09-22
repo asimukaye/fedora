@@ -363,7 +363,7 @@ class SplitConfig:
     split_type: str
     noise: NoiseConfig
     num_splits: int  # should be equal to num_clients
-    num_patho_clients: int
+    num_noisy_clients: int
     num_class_per_client: int
     dirichlet_alpha: float
     # Train test split ratio within the client,
@@ -405,7 +405,7 @@ class SplitConfig:
 
         assert self.split_type in known_splits, f"Invalid split type: {self.split_type}"
         assert (
-            self.num_patho_clients <= self.num_splits
+            self.num_noisy_clients <= self.num_splits
         ), "Number of pathological splits should be less than or equal to number of splits"
 
 
@@ -512,7 +512,7 @@ def set_debug_mode(cfg: Config):
         "n_distinct_noisy_clients",
         "n_distinct_label_flipped_clients",
     ]:
-        cfg.dataset.split_conf.num_patho_clients = 2
+        cfg.dataset.split_conf.num_noisy_clients = 2
     if hasattr(cfg.strategy.cfg, "num_clients"):
         cfg.strategy.cfg.num_clients = 3  # type: ignore
     logger.debug(

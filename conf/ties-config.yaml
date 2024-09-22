@@ -2,8 +2,7 @@
 ---
 mode: ties
 # mode: debug
-desc: "Ties with twocnn model and cifar10 dataset, IID, K = 0.2, lamba = 1.5, 200 rounds, 1 epochs"
-
+desc: "Ties with twocnn model and cifar10 dataset, patho 3 cls/client, K = 0.2, lamba = 1.0, 200 rounds, 1 epochs"
 
 defaults:
   - base_config
@@ -35,7 +34,7 @@ simulator:
   eval_every: 1
   flwr_resources:
     num_cpus: 2
-    num_gpus: 0 #TODO: Couple this with device init
+    num_gpus: 0.5 #TODO: Couple this with device init
 
 train_cfg:
   epochs: 1
@@ -69,16 +68,16 @@ dataset:
     # split_type: n_distinct_label_flipped_clients
     # split_type: n_noisy_clients
     # split_type: n_distinct_noisy_clients
-    # split_type: patho
+    split_type: patho
     # split_type: dirichlet
     # split_type: one_imbalanced_client
-    split_type: iid
+    # split_type: iid
     # split_type: one_noisy_client
     num_splits: ${simulator.num_clients}
     num_class_per_client: 3 # classes per client for patho split type
-    # num_patho_clients: 1
-    num_patho_clients: 5
-    dirichlet_alpha: 1.0
+    # num_noisy_clients: 1
+    num_noisy_clients: 3
+    dirichlet_alpha: 10.0
     noise:
       mu: 0.0
       sigma: 0.5
@@ -91,6 +90,10 @@ model_init:
   init_type: xavier
   init_gain: 1.0
 
+strategy:
+  cfg:
+    K: 0.2
+    lamda: 1.0
 
 # client:
 #   cfg:

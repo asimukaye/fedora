@@ -4,6 +4,7 @@ import copy
 
 import torch
 from torch.nn import Module, Parameter
+from torch.nn.utils.convert_parameters import parameters_to_vector, vector_to_parameters
 from torch import Tensor, tensor
 import torch.optim
 import fedora.customtypes as fT
@@ -61,7 +62,7 @@ def state_dict_to_vector(state_dict: dict, remove_keys=[]):
         if key in shared_state_dict:
             del shared_state_dict[key]
     # sorted_shared_state_dict = OrderedDict(sorted(shared_state_dict.items()))
-    return torch.nn.utils.parameters_to_vector(
+    return parameters_to_vector(
         [value.reshape(-1) for value in shared_state_dict.values()]
     )
 
@@ -75,7 +76,7 @@ def vector_to_state_dict(vector: Tensor, state_dict: dict, remove_keys=[]):
     # sorted_reference_dict = OrderedDict(sorted(reference_dict.items()))
 
     # create a shared state dict using the refence dict
-    torch.nn.utils.vector_to_parameters(vector, reference_dict.values())
+    vector_to_parameters(vector, reference_dict.values())
 
     return reference_dict
 
@@ -103,6 +104,7 @@ def check_parameterNamesMatch(checkpoints):
                     f"The different parameters are {parameter_names.symmetric_difference(current_parameterNames)}"
                 )
 
+
 def check_state_dicts_equal(state_dict1, state_dict2):
     if set(state_dict1.keys()) != set(state_dict2.keys()):
         return False
@@ -112,6 +114,7 @@ def check_state_dicts_equal(state_dict1, state_dict2):
             return False
 
     return True
+
 
 ## TIES MERGING UTILS
 
@@ -138,8 +141,8 @@ def topk_values_mask(M: Tensor, K=0.7, return_mask=False):
         return M * final_mask, final_mask.float().mean(dim=1), final_mask
     return M * final_mask, final_mask.float().mean(dim=1)
 
-
-def resolve_zero_signs(sign_to_mult, method="majority"):
+# This method seems a little arbitrary
+def resolve_zero_signs(sign_to_mult: Tensor, method="majority") -> Tensor:
     majority_sign = torch.sign(sign_to_mult.sum())
 
     if method == "majority":
@@ -149,32 +152,41 @@ def resolve_zero_signs(sign_to_mult, method="majority"):
     return sign_to_mult
 
 
-def resolve_sign(Tensor):
-    sign_to_mult = torch.sign(Tensor.sum(dim=0))
+def resolve_sign(input_tensor: Tensor) -> Tensor:
+    sign_to_mult = torch.sign(input_tensor.sum(dim=0))
     sign_to_mult = resolve_zero_signs(sign_to_mult, "majority")
     return sign_to_mult
 
 
-def disjoint_merge(Tensor, merge_func, sign_to_mult):
+def disjoint_merge(params: Tensor, merge_func: str, sign_to_mult: Tensor) -> Tensor:
 
     merge_func = merge_func.split("-")[-1]
+    # ic(sign_to_mult.shape)
+    # ic(sign_to_mult.unsqueeze(0).shape)
+    # ic(params.shape)
 
     # If sign is provided then we select the corresponding entries and aggregate.
     if sign_to_mult is not None:
         rows_to_keep = torch.where(
-            sign_to_mult.unsqueeze(0) > 0, Tensor > 0, Tensor < 0
+            sign_to_mult.unsqueeze(0) > 0, params > 0, params < 0
         )
-        selected_entries = Tensor * rows_to_keep
+        # ic(rows_to_keep.shape)
+        # selected_entries = params * rows_to_keep
+        # ic(selected_entries.shape)
     # Else we select all non-zero entries and aggregate.
     else:
-        rows_to_keep = Tensor != 0
-        selected_entries = Tensor * rows_to_keep
+        rows_to_keep = params != 0
+        selected_entries = params * rows_to_keep
 
     if merge_func == "mean":
         non_zero_counts = (selected_entries != 0).sum(dim=0).float()
+        # ic(non_zero_counts.shape)
+        # ic(non_zero_counts.min())
+        # ic(non_zero_counts.max())
         disjoint_aggs = torch.sum(selected_entries, dim=0) / torch.clamp(
             non_zero_counts, min=1
         )
+        # ic(disjoint_aggs.shape)
     elif merge_func == "sum":
         disjoint_aggs = torch.sum(selected_entries, dim=0)
     elif merge_func == "max":
@@ -187,10 +199,10 @@ def disjoint_merge(Tensor, merge_func, sign_to_mult):
 
 
 def ties_merging(
-    flat_task_checks,
+    flat_task_checks: Tensor,
     reset_thresh=0.2,
     merge_func="",
-):
+) -> Tensor:
     all_checks = flat_task_checks.clone()
     updated_checks, *_ = topk_values_mask(all_checks, K=reset_thresh, return_mask=False)
     print(f"RESOLVING SIGN")
@@ -256,18 +268,28 @@ class TiesStrategy(ABCStrategy):
 
         _client_params = {cid: inp.client_params for cid, inp in strategy_ins.items()}
 
-        flat_client_params = torch.vstack([state_dict_to_vector(c_params) for c_params in _client_params.values()])
+        flat_client_params = torch.vstack(
+            [state_dict_to_vector(c_params) for c_params in _client_params.values()]
+        )
         # ic(self._server_params.keys())
 
         flat_global_params = state_dict_to_vector(self._server_params)
 
         delta_params = flat_client_params - flat_global_params
+        # ic(flat_client_params.shape)
+        # ic(delta_params.shape)
 
-        merged_delta_params = ties_merging(delta_params, reset_thresh=self.cfg.K, merge_func=self.cfg.merge_func)
+        merged_delta_params = ties_merging(
+            delta_params, reset_thresh=self.cfg.K, merge_func=self.cfg.merge_func
+        )
 
-        updated_global_params = flat_global_params + self.cfg.lamda* merged_delta_params
+        updated_global_params = (
+            flat_global_params + self.cfg.lamda * merged_delta_params
+        )
         # ic(updated_global_params.shape)
-        self._server_params = vector_to_state_dict(updated_global_params, self._server_params)
+        self._server_params = vector_to_state_dict(
+            updated_global_params, self._server_params
+        )
         # ic(self._server_params.keys())
 
         outs = TiesOuts(server_params=self._server_params)
