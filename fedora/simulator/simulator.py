@@ -23,7 +23,7 @@ from fedora.client.abcclient import simple_evaluator, simple_trainer
 from fedora.client.baseclient import BaseFlowerClient
 
 from fedora.dataloader import load_federated_dataset
-from fedora.config import Config, SimConfig
+from fedora.config.config import Config, SimConfig
 from fedora.utils import log_tqdm, log_instance, generate_client_ids, get_time
 
 from fedora.models.model import init_model

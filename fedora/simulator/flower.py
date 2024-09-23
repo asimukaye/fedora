@@ -11,7 +11,7 @@ import flwr as fl
 from hydra.utils import instantiate
 
 from fedora.utils import generate_client_ids
-from fedora.config import Config
+from fedora.config.config import Config
 from fedora.simulator.utils import make_checkpoint_dirs
 from fedora.results.resultmanager import ResultManager
 from fedora.client.baseclient import BaseFlowerClient

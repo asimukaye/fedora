@@ -1,8 +1,8 @@
 %YAML 1.2
 ---
 # mode: fedavg
-mode: centralized
-# mode: debug
+# mode: centralized
+mode: debug
 desc: "FedAvg run with twocnn model and cifar10 dataset, patho 3, 200 rounds, 1 epochs"
 # desc: "Centralized training w epochs and rounds interchanged. sanity check"
 

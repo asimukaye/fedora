@@ -12,11 +12,73 @@ from typing import Dict
 from importlib import import_module
 from collections import defaultdict, OrderedDict
 from multiprocessing import Process
+import subprocess
+import inspect
+from io import StringIO
+import pandas as pd
 
+from hydra.utils import get_object
 from time import perf_counter
 from colorama import Fore, Style
 import fedora.customtypes as fT
 logger = logging.getLogger(__name__)
+
+
+def arg_check(args: dict, fn: str | None = None):  # type: ignore
+    # Figure out usage with string functions
+    # Check if the argument spec is compatible with
+    if fn is None:
+        fn: str = args["_target_"]
+
+    all_args = inspect.signature(get_object(fn)).parameters.values()
+    required_args = [
+        arg.name for arg in all_args if arg.default == inspect.Parameter.empty
+    ]
+    # collect eneterd arguments
+    for argument in required_args:
+        if argument in args:
+            logger.debug(f"Found required argument: {argument}")
+        else:
+            if args.get("_partial_", False):
+                logger.debug(f"Missing required argument: {argument} for {fn}")
+            else:
+                logger.error(f"Missing required argument: {argument}")
+                raise ValueError(f"Missing required argument: {argument}")
+
+
+def get_free_gpus(min_memory_reqd=4096):
+    gpu_stats = subprocess.check_output(
+        ["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"]
+    )
+    gpu_df = pd.read_csv(
+        StringIO(gpu_stats.decode()), names=["memory.used", "memory.free"], skiprows=1
+    )
+    # print('GPU usage:\n{}'.format(gpu_df))
+    gpu_df["memory.free"] = gpu_df["memory.free"].map(lambda x: int(x.rstrip(" [MiB]")))
+    # min_memory_reqd = 10000
+    ids = gpu_df.index[gpu_df["memory.free"] > min_memory_reqd]
+    for id in ids:
+        logger.debug(
+            "Returning GPU:{} with {} free MiB".format(
+                id, gpu_df.iloc[id]["memory.free"]
+            )
+        )
+    return ids.to_list()
+
+
+def get_free_gpu():
+    gpu_stats = subprocess.check_output(
+        ["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"]
+    )
+    gpu_df = pd.read_csv(
+        StringIO(gpu_stats.decode()), names=["memory.used", "memory.free"], skiprows=1
+    )
+    # print('GPU usage:\n{}'.format(gpu_df))
+    gpu_df["memory.free"] = gpu_df["memory.free"].map(lambda x: int(x.rstrip(" [MiB]")))
+    idx = gpu_df["memory.free"].idxmax()
+    logger.debug("Returning GPU:{} with {} free MiB".format(idx, gpu_df.iloc[idx]["memory.free"]))  # type: ignore
+    return idx
+
 
 def unroll_param_keys(config_dict: dict[str, str]) -> list[str]:
     param_keys = []

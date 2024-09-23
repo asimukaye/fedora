@@ -5,7 +5,7 @@ import random
 from torch.utils.data import Subset, Dataset
 import torch
 from fedora.utils  import log_tqdm
-from fedora.config import SplitConfig
+from fedora.config.config import SplitConfig
 import fedora.customtypes as fT
 from fedora.splits.pathological import pathological_non_iid_split
 from fedora.splits.dirichlet import dirichlet_noniid_split

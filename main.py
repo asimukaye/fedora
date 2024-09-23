@@ -1,7 +1,7 @@
 import hydra
 from omegaconf import OmegaConf
 from fedora.simulator.simulator import Simulator
-from fedora.config import Config, register_configs
+from fedora.config.config import Config, register_configs
 import logging
 import cProfile, pstats
 

@@ -11,7 +11,7 @@ from torch import Tensor
 
 import torch.optim 
 
-from fedora.config import *
+from fedora.config.config import *
 
 @dataclass
 class StrategyIns(ABC):

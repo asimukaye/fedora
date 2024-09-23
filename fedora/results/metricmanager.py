@@ -4,7 +4,9 @@ from importlib import import_module
 from .metricszoo import BaseMetric
 import fedora.customtypes as fT
 from fedora.utils import get_time
-from fedora.config import MetricConfig
+from fedora.config.trainconf import MetricConfig
+from dataclasses import dataclass, field
+from typing import Optional
 import os
 from copy import deepcopy
 import json
@@ -12,6 +14,16 @@ import json
 ##################
 # Metric manager #
 ##################
+# @dataclass
+# class MetricConfig:
+#     eval_metrics: list
+#     # fairness_metrics: list
+#     log_to_file: bool = False
+#     file_prefix: str = field(default="")
+#     cwd: Optional[str] = field(default=None)
+
+#     def __post_init__(self):
+#         self.cwd = os.getcwd() if self.cwd is None else self.cwd
 
 def _result_to_mea_dict(result: fT.Result):
     out = {}

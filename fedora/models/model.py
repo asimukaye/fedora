@@ -4,7 +4,7 @@ import inspect
 import logging
 import importlib
 from hydra.utils import instantiate
-from fedora.config import ModelConfig, ModelInitConfig
+from fedora.config.config import ModelConfig, ModelInitConfig
 logger = logging.getLogger(__name__)
 
 

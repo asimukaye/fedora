@@ -17,7 +17,7 @@ from wandb import plot as wandb_plot
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from fedora.config import *
+from fedora.config.config import SimConfig
 import fedora.customtypes as fT
 from fedora.utils import get_time
 

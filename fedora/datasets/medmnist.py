@@ -1,6 +1,6 @@
 import torch
 import logging
-from fedora.config import DatasetModelSpec
+from fedora.config.config import DatasetModelSpec
 from torch.utils.data import Dataset
 import medmnist
 import numpy as np

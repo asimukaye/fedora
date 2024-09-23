@@ -14,7 +14,7 @@ from torch.optim import Optimizer
 import torch
 from .baseclient import  BaseFlowerClient, MetricManager, ClientConfig
 from fedora.strategy.fedstdev import FedstdevStrategy
-from fedora.config import FedstdevClientConfig, TrainConfig
+from fedora.config.config import FedstdevClientConfig, TrainConfig
 from fedora.utils import get_time
 import fedora.customtypes as fT
 

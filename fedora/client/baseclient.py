@@ -23,9 +23,10 @@ from fedora.utils import (
     get_time,
 )
 
-from fedora.config import ClientConfig, TrainConfig
+from fedora.config.clientconf import ClientConfig
+from fedora.config.trainconf import TrainConfig
 from fedora.client.abcclient import ABCClient, simple_evaluator
-from fedora.results.resultmanager import ResultManager
+
 import fedora.customtypes as fT
 import pandas as pd
 

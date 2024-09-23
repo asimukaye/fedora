@@ -8,7 +8,7 @@ from functools import partial
 from torch.nn import CosineSimilarity, Parameter
 from torch.nn.utils.convert_parameters import parameters_to_vector, vector_to_parameters
 from torch.nn.functional import cosine_similarity, tanh
-from fedora.config import ClientConfig, CGSVConfig
+from fedora.config.config import ClientConfig, CGSVConfig
 from fedora.results.resultmanager import ResultManager
 from fedora.strategy import *
 import fedora.customtypes as fT

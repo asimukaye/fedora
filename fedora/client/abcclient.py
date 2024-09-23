@@ -12,8 +12,9 @@ import logging
 from fedora.results.metricmanager import MetricManager
 from fedora.utils import log_tqdm
 from tqdm import tqdm
-from fedora.config import ClientConfig, TrainConfig
-from fedora.results.resultmanager import ResultManager
+from fedora.config.trainconf import TrainConfig
+from fedora.config.clientconf import ClientConfig
+
 import fedora.customtypes as fT
 logger = logging.getLogger(__name__)
 

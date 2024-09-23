@@ -19,7 +19,7 @@ from fedora.strategy.abcstrategy import ABCStrategy
 
 # from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from fedora.config import *
+from fedora.config.config import *
 
 # TODO: Long term todo: the server should 
 #  eventually be tied directly to the server algorithm
