@@ -4,7 +4,7 @@ from importlib import import_module
 from .metricszoo import BaseMetric
 import fedora.customtypes as fT
 from fedora.utils import get_time
-from fedora.config.trainconf import MetricConfig
+from fedora.config.commonconf import MetricConfig
 from dataclasses import dataclass, field
 from typing import Optional
 import os

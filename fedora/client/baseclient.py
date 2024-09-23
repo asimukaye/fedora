@@ -24,7 +24,7 @@ from fedora.utils import (
 )
 
 from fedora.config.clientconf import ClientConfig
-from fedora.config.trainconf import TrainConfig
+from fedora.config.commonconf import TrainConfig
 from fedora.client.abcclient import ABCClient, simple_evaluator
 
 import fedora.customtypes as fT

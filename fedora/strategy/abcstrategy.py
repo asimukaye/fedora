@@ -1,17 +1,16 @@
 from abc import ABC, abstractmethod
 import typing as t
+from dataclasses import dataclass, field
 
-import fedora.customtypes as fT
 import torch
-from fedora.results.resultmanager import ResultManager
-
-import numpy as np
 from torch.nn import Module, ParameterDict, Parameter
 from torch import Tensor
-
 import torch.optim 
 
-from fedora.config.config import *
+import fedora.customtypes as fT
+from fedora.results.resultmanager import ResultManager
+
+from fedora.config.strategyconf import StrategyConfig
 
 @dataclass
 class StrategyIns(ABC):

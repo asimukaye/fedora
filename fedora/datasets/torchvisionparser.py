@@ -1,7 +1,7 @@
 import torch
 import logging
 import torchvision
-from fedora.config.config import DatasetModelSpec
+from fedora.config.commonconf import DatasetModelSpec
 from torch.utils import data
 import numpy as np
 logger = logging.getLogger(__name__)

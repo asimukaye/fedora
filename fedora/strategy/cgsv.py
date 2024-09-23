@@ -4,13 +4,18 @@ import typing as t
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
+import torch
+from torch.nn import Module
 # from torch.optim.lr_scheduler import ExponentialLR
 from torch.nn import CosineSimilarity, Parameter
 from torch.nn.utils.convert_parameters import parameters_to_vector, vector_to_parameters
 from torch.nn.functional import cosine_similarity, tanh
-from fedora.config.config import ClientConfig, CGSVConfig
+# from fedora.config.clientconf import ClientConfig
+# from fedora.config.strategyconf import  CGSVConfig
 from fedora.results.resultmanager import ResultManager
-from fedora.strategy import *
+# from fedora.strategy import *
+from fedora.strategy.abcstrategy import ABCStrategy, StrategyIns, StrategyOuts, AllClientIns_t
+from fedora.strategy.fedavg import random_client_selection, ClientInProto, ScalarWeights_t
 import fedora.customtypes as fT
 from fedora.utils import generate_client_ids
 from fedora.strategy.fedopt import compute_server_delta_w_normalize, compute_server_delta, add_param_deltas

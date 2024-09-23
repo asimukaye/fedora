@@ -14,7 +14,7 @@ from fedora.datasets import *
 from fedora.splits.split import get_client_datasets
 import torchvision.transforms as tvt
 logger = logging.getLogger(__name__)
-from fedora.config.config import DatasetConfig, TransformsConfig, DatasetModelSpec
+from fedora.config.commonconf import DatasetConfig, TransformsConfig, DatasetModelSpec
 
 
 def get_train_transform(cfg: TransformsConfig):

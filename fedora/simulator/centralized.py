@@ -6,7 +6,7 @@ from torch.nn import Module
 from torch.utils.data import Dataset, ConcatDataset, DataLoader
 from hydra.utils import instantiate
 
-from fedora.config.config import Config
+from fedora.config.masterconf import Config
 from fedora.results.resultmanager import ResultManager
 from fedora.results.metricmanager import MetricManager
 from fedora.client.abcclient import simple_evaluator, simple_trainer

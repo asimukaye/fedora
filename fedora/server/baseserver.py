@@ -20,7 +20,7 @@ from torch import Tensor
 from torch.optim.lr_scheduler import LRScheduler
 
 from fedora.client.baseclient import BaseFlowerClient, simple_evaluator
-from fedora.config.config import TrainConfig, ServerConfig
+from fedora.config.commonconf import TrainConfig, ServerConfig
 from fedora.results.resultmanager import ResultManager
 from fedora.results.metricmanager import MetricManager
 

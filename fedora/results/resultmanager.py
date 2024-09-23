@@ -5,10 +5,12 @@ import json
 import pickle
 import numpy as np
 import typing as t
+import os
 from torch.utils.tensorboard.writer import SummaryWriter
 from enum import Enum, auto
 from dataclasses import dataclass, field, asdict, is_dataclass
 from logging import Logger
+import logging
 import pandas as pd
 import wandb
 from copy import deepcopy
@@ -17,7 +19,7 @@ from wandb import plot as wandb_plot
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from fedora.config.config import SimConfig
+from fedora.config.commonconf import SimConfig
 import fedora.customtypes as fT
 from fedora.utils import get_time
 
@@ -208,7 +210,7 @@ class ResultManager:
         self._round_check(result._round, actor)
 
         # TODO: Make the below two lines obsolete
-        if logger.level == logging.DEBUG:
+        if self.logger.level == logging.DEBUG:
             log_metric(event, result._round, result.metrics, self.logger)
         self.result_dict[event] = asdict(result)
 
@@ -329,7 +331,7 @@ class ResultManager:
             self._add_metric(metric_name, event, phase, actor, metric_val)
         else:
             err_str = f"Metric logging for {metric_name} of type: {type(metric_val)} is not supported"
-            logger.error(err_str)
+            self.logger.error(err_str)
             raise TypeError(err_str)
 
     # Must call this to update results and round

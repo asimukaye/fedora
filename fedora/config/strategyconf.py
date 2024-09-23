@@ -1,28 +1,12 @@
 from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
-from fedora.strategy.fedavg import FedAvgStrategy
-from fedora.strategy.fedavgmanual import FedavgManual
-from fedora.strategy.fedopt import FedOptStrategy
-from fedora.strategy.fedstdev import FedstdevStrategy
-from fedora.strategy.fedgradstd import FedgradstdStrategy
-from fedora.strategy.ties import TiesStrategy
-from fedora.strategy.cgsv import CgsvStrategy
 
 import importlib
 from fedora.utils import Range
 
 # strategy = importlib.import_module("fedora.strategy")
 
-STRATEGY_MAPS = {
-    "fedavg": FedAvgStrategy,
-    "base": FedAvgStrategy,
-    "fedavgmanual": FedavgManual,
-    "fedopt": FedOptStrategy,
-    "cgsv": CgsvStrategy,
-    "ties": TiesStrategy,
-    "fedstdev": FedstdevStrategy,
-    "fedgradstd": FedgradstdStrategy,
-}
+
 
 ########### Strategy Configurations ##########
 @dataclass
@@ -104,17 +88,11 @@ class FedavgManualConfig(StrategyConfig):
         self.weights = [w / sum(self.weights) for w in self.weights]
 
 
-@dataclass
-class StrategySchema:
-    _target_: str
-    # _partial_: bool
-    cfg: StrategyConfig
 
 def register_strategy_configs():
     cs = ConfigStore.instance()
     
     cs.store(group="strategy/cfg", name="base_cgsv", node=CGSVConfig)
-    cs.store(group="strategy", name="strategy_schema", node=StrategySchema)
     cs.store(group="strategy/cfg", name="base_strategy", node=StrategyConfig)
     cs.store(group="strategy/cfg", name="fedavgmanual", node=FedavgManualConfig)
     cs.store(group="strategy/cfg", name="fedopt", node=FedOptConfig)

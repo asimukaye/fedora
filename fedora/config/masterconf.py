@@ -19,11 +19,20 @@ from fedora.client.fedstdevclient import FedstdevClient
 from fedora.client.fedgradstdclient import FedgradstdClient
 
 from fedora.server.baseserver import BaseFlowerServer
-from fedora.utils import Range, get_free_gpus, arg_check, get_free_gpu
-from fedora.config.strategyconf import StrategySchema, register_strategy_configs
 
-from fedora.config.splitconf import SplitConfig
-from fedora.config.trainconf import TrainConfig
+from fedora.strategy.fedavg import FedAvgStrategy
+from fedora.strategy.fedavgmanual import FedavgManual
+from fedora.strategy.fedopt import FedOptStrategy
+from fedora.strategy.fedstdev import FedstdevStrategy
+from fedora.strategy.fedgradstd import FedgradstdStrategy
+from fedora.strategy.ties import TiesStrategy
+from fedora.strategy.cgsv import CgsvStrategy
+
+
+# from fedora.utils import Range, get_free_gpus, arg_check, get_free_gpu
+from fedora.config.strategyconf import StrategyConfig, register_strategy_configs
+
+from fedora.config.commonconf import TrainConfig, ModelConfigGN, ModelInitConfig, DatasetConfig, SimConfig, default_resources, ModelConfig, ServerConfig
 from fedora.config.clientconf import ClientConfig, register_client_configs
 logger = logging.getLogger(__name__)
 
@@ -60,47 +69,23 @@ SERVER_MAPS = {
     "baseflower": BaseFlowerServer,
 }
 
+STRATEGY_MAPS = {
+    "fedavg": FedAvgStrategy,
+    "base": FedAvgStrategy,
+    "fedavgmanual": FedavgManual,
+    "fedopt": FedOptStrategy,
+    "cgsv": CgsvStrategy,
+    "ties": TiesStrategy,
+    "fedstdev": FedstdevStrategy,
+    "fedgradstd": FedgradstdStrategy,
+}
 
-########## Simulator Configurations ##########
 
-
-def default_resources():
-    return {"num_cpus": 1, "num_gpus": 0.0}
-
-
-# TODO: Isolate result manager configs from this
-# TODO: Develop a client and strategy compatibility checker
 @dataclass
-class SimConfig:
-    seed: int
-    num_clients: int
-    use_tensorboard: bool
-    num_rounds: int
-    use_wandb: bool
-    save_csv: bool
-    checkpoint_every: int = field(default=10)
-    out_prefix: str = field(default="")
-    # plot_every: int = field(default=10)
-    eval_every: int = field(default=1)
-    eval_type: str = field(default="both")
-    mode: str = field(default="federated")
-    # flower: Optional[FlowerConfig]
-    flwr_resources: dict = field(default_factory=default_resources)
-
-    def __post_init__(self):
-        assert self.mode in [
-            "federated",
-            "standalone",
-            "centralized",
-            "flower",
-        ], f"Unknown simulator mode: {self.mode}"
-        assert (
-            self.use_tensorboard or self.use_wandb or self.save_csv
-        ), f"Select any one logging method atleast to avoid losing results"
-
-
-########## Training Configurations ##########
-
+class StrategySchema:
+    _target_: str
+    # _partial_: bool
+    cfg: StrategyConfig
 
 ########## Client Configurations ##########
 
@@ -113,11 +98,6 @@ class ClientSchema:
     train_cfg: TrainConfig
 
 
-########## Server Configurations ##########
-@dataclass
-class ServerConfig:
-    eval_type: str = field(default="both")
-    eval_every: int = field(default=1)
 
 
 @dataclass
@@ -127,76 +107,6 @@ class ServerSchema:
     cfg: ServerConfig
     train_cfg: TrainConfig
 
-
-
-########## Dataset configurataions ##########
-
-
-# TODO: Add support for custom transforms
-@dataclass
-class TransformsConfig:
-    resize: Optional[dict] = field(default_factory=dict)
-    normalize: Optional[dict] = field(default_factory=dict)
-    train_cfg: Optional[list] = field(default_factory=list)
-
-    def __post_init__(self):
-        train_tf = []
-        for key, val in self.__dict__.items():
-            if key == "normalize":
-                continue
-            else:
-                if val:
-                    train_tf.append(val)
-        self.train_cfg = train_tf
-
-    # construct
-
-
-
-@dataclass
-class DatasetConfig:
-    name: str
-    data_path: str
-    dataset_family: str
-    transforms: Optional[TransformsConfig]
-    test_fraction: Optional[float]
-    seed: Optional[int]
-    federated: bool
-    split_conf: SplitConfig
-    subsample: bool = False
-    subsample_fraction: float = 0.0  # subsample the dataset with the given fraction
-
-    def __post_init__(self):
-        # assert self.test_fraction == Range(0.0, 1.0), f'Invalid value {self.test_fraction} for test fraction'
-        self.data_path = to_absolute_path(self.data_path)
-        if self.federated == False:
-            assert (
-                self.split_conf.num_splits == 1
-            ), "Non-federated datasets should have only one split"
-
-
-########## Model Configurations ##########
-@dataclass
-class ModelConfig:
-    _target_: str
-    hidden_size: int
-
-
-@dataclass
-class ModelConfigGN(ModelConfig):
-    num_groups: int
-
-
-@dataclass
-class DatasetModelSpec:
-    num_classes: int
-    in_channels: int
-
-
-@dataclass
-class ModelInitConfig:
-    init_type: str
-    init_gain: float
 
 
 ########## Master Configurations ##########
@@ -276,6 +186,7 @@ def register_configs():
     cs.store(group="client", name="client_schema", node=ClientSchema)
     cs.store(group="server", name="base_server", node=ServerSchema)
     cs.store(group="server", name="base_flower_server", node=ServerSchema)
+    cs.store(group="strategy", name="strategy_schema", node=StrategySchema)
 
     cs.store(group="train_cfg", name="base_train", node=TrainConfig)
    
@@ -284,8 +195,3 @@ def register_configs():
     cs.store(group="model", name="resnet34gn", node=ModelConfigGN)
     cs.store(group="model", name="resnet10gn", node=ModelConfigGN)
     # cs.store(group='model', name='resnet18gn', node=ModelConfigGN)
-
-
-    # cs.store(group='server/cfg', name='base_fedavg', node=FedavgConfig)
-    # cs.store(group='server/cfg', name='fedstdev_server', node=FedstdevServerConfig)
-

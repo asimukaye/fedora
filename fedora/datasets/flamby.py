@@ -1,6 +1,6 @@
 from flamby.datasets.fed_isic2019 import FedIsic2019
 import logging
-from fedora.config.config import DatasetModelSpec
+from fedora.config.commonconf import DatasetModelSpec
 from torch.utils.data import Subset, ConcatDataset, Dataset
 import fedora.customtypes as fT
 import torch

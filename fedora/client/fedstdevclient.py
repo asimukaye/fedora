@@ -12,9 +12,10 @@ from torch import Generator, tensor, Tensor
 from torch.nn import Module, Parameter
 from torch.optim import Optimizer
 import torch
-from .baseclient import  BaseFlowerClient, MetricManager, ClientConfig
+from .baseclient import  BaseFlowerClient, MetricManager
 from fedora.strategy.fedstdev import FedstdevStrategy
-from fedora.config.config import FedstdevClientConfig, TrainConfig
+from fedora.config.clientconf import FedstdevClientConfig, ClientConfig
+from fedora.config.commonconf import TrainConfig
 from fedora.utils import get_time
 import fedora.customtypes as fT
 
