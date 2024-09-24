@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
-
-import importlib
 from fedora.utils import Range
 
 # strategy = importlib.import_module("fedora.strategy")
@@ -74,6 +72,7 @@ class CGSVConfig(StrategyConfig):
             ), "Gamma should be greater than 0 for delta normalization"
         assert self.alpha == Range(0.0, 1.0), f"Invalid value {self.alpha} for alpha"
         assert self.beta >= 1.0, f"Invalid value {self.beta} for beta"
+
 @dataclass
 class FedavgManualConfig(StrategyConfig):
     weights: list[float]

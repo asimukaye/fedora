@@ -41,18 +41,13 @@ train_cfg:
   device: auto
   batch_size: 128
   eval_batch_size: 128
-  lr: 0.01
-  lr_decay: 0.977
   optimizer:
-    _target_: torch.optim.SGD
-    _partial_: true
-    lr: ${train_cfg.lr}
-  criterion:
-    _target_: torch.nn.CrossEntropyLoss
+    name: sgd
+    lr: 0.01
+  loss_name: crossentropy
   lr_scheduler:
-    _target_: torch.optim.lr_scheduler.ExponentialLR
-    _partial_: true
-    gamma: ${train_cfg.lr_decay}
+    name: exponential
+    gamma: 0.977 # lr_decay
   metric_cfg:
     eval_metrics: ['acc1']
     file_prefix: ''

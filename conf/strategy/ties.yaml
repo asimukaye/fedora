@@ -3,7 +3,7 @@ defaults:
   - cfg: ties
   - _self_
 
-_target_: fedora.strategy.ties.TiesStrategy
+name: ties
 cfg:
   train_fraction: 1.0
   eval_fraction: 1.0

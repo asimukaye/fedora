@@ -1,3 +1,3 @@
-_target_: fedora.models.resnet.ResNet34GN
+name: resnet34gn
 hidden_size: 64
 num_groups: 2

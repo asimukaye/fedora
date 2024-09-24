@@ -143,6 +143,7 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
         dataset: fT.DatasetPair_t,
         model: Module,
     ):
+        # ic(train_cfg)
 
         # NOTE: the client object for Flower uses its own tmp directory. May cause side effects
         self._cid = client_id
@@ -166,15 +167,15 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
             self.train_cfg.metric_cfg, self._round, actor=self._cid
         )
 
-        self.optim_partial: functools.partial = self.train_cfg.optimizer  # type: ignore
+        # self.optim_partial: functools.partial = self.train_cfg.optimizer  # type: ignore
 
-        self.criterion = self.train_cfg.criterion
+        self.loss_fn = self.train_cfg.loss_fn
 
         self.train_loader = self._create_dataloader(
             self.training_set, shuffle=cfg.data_shuffle
         )
         self.test_loader = self._create_dataloader(self.test_set, shuffle=False)
-        self._optimizer: Optimizer = self.optim_partial(self._model.parameters())
+        self._optimizer = self.train_cfg.optim_partial(self._model.parameters())
 
         self._train_result = fT.Result(actor=client_id)
         self._eval_result = fT.Result(actor=client_id)
@@ -192,7 +193,7 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
         self._model = model
 
     def set_lr(self, lr: float) -> None:
-        self.train_cfg.lr = lr
+        self.train_cfg.optimizer['lr'] = lr
 
     # @property
     # def round(self)-> int:
@@ -282,7 +283,7 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
         # logger.info(f'CLIENT {self.id} Starting update')
         # print('############# CWD: ##########', os.getcwd())
         self._model.load_state_dict(train_ins.in_params)
-        self._optimizer = self.optim_partial(self._model.parameters())
+        self._optimizer = self.train_cfg.optim_partial(self._model.parameters())
         self.metric_mngr._round = self._round
         self._model.train()
         self._model.to(self.train_cfg.device)
@@ -304,7 +305,8 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
                 # ic(inputs.shape)
                 outputs: Tensor = self._model(inputs)
                 # ic(targets.shape, outputs.shape)
-                loss: Tensor = self.criterion(outputs, targets)  # type: ignore
+                loss: Tensor = self.loss_fn(outputs, targets) 
+
                 loss.backward()
 
                 self._optimizer.step()

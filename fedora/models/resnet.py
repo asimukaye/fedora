@@ -1,6 +1,6 @@
 import torch
 
-from fedora.models.model_utils import ResidualBlock
+from fedora.models.utils import ResidualBlock
 
 
 

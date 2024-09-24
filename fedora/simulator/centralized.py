@@ -4,7 +4,7 @@ import time
 
 from torch.nn import Module
 from torch.utils.data import Dataset, ConcatDataset, DataLoader
-from hydra.utils import instantiate
+# from hydra.utils import instantiate
 
 from fedora.config.masterconf import Config
 from fedora.results.resultmanager import ResultManager
@@ -30,8 +30,8 @@ def run_centralized_simulation(
     pooled_train_set = ConcatDataset([train_set for train_set, _ in client_datasets])
     pooled_test_set = ConcatDataset([test_set for _, test_set in client_datasets])
 
-    cfg.train_cfg.criterion = instantiate(cfg.train_cfg.criterion)
-    cfg.train_cfg.optimizer = instantiate(cfg.train_cfg.optimizer)
+    # cfg.train_cfg.loss_fn = instantiate(cfg.train_cfg.loss_fn)
+    # cfg.train_cfg.optimizer = instantiate(cfg.train_cfg.optimizer)
 
     train_loader = DataLoader(
         dataset=pooled_train_set, batch_size=cfg.train_cfg.batch_size, shuffle=True

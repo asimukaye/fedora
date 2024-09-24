@@ -3,8 +3,7 @@ defaults:
   - cfg: fedgradstd_client
   - _self_
 
-_target_: fedora.client.fedgradstdclient.FedgradstdClient
-_partial_: true
+name: fedgradstd
 cfg:
   start_epoch: 0
   data_shuffle: false

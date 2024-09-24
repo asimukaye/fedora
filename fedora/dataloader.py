@@ -12,40 +12,47 @@ import fedora.customtypes as fT
 from fedora.utils  import TqdmToLogger
 from fedora.datasets import *
 from fedora.splits.split import get_client_datasets
-import torchvision.transforms as tvt
+import torchvision.transforms.v2 as tvt
 logger = logging.getLogger(__name__)
-from fedora.config.commonconf import DatasetConfig, TransformsConfig, DatasetModelSpec
+from fedora.config.commonconf import DatasetConfig, TransformsConfig, DatasetModelSpec, initialize_module, partial_initialize_module
 
 
 def get_train_transform(cfg: TransformsConfig):
-    if not cfg:
-        train_list = [tvt.ToTensor()]
-    else:
-        train_list: list = instantiate(cfg.train_cfg)
-        train_list.append(tvt.ToTensor())
-        if cfg.normalize:
-            train_list.append(instantiate(cfg.normalize))
+    # FIXME: work
+    # tf_list =[]
+    # #  
+    # if cfg.resize:
+    # # tf_list.append(instantiate(cfg.resize))
+    #     tf_list.append(tvt.Resize((cfg.resize['height'], cfg.resize['width'])))
+    train_list: list = instantiate(cfg.train)
+    train_list.append(tvt.ToTensor())
+    if cfg.normalize:
+        train_list.append(instantiate(cfg.normalize))
     transform = tvt.Compose(train_list)
     return transform
 
 def get_test_transform(cfg: TransformsConfig):
-    if not cfg:
-        tf_list = [tvt.ToTensor()]
-    else:
-        tf_list =[]
-        if cfg.resize:
-            tf_list.append(instantiate(cfg.resize))
-        tf_list.append(tvt.ToTensor())
-        if cfg.normalize:
-            tf_list.append(instantiate(cfg.normalize))
+  
+    tf_list =[]
+    if cfg.resize:
+        tf_list.append(instantiate(cfg.resize))
+        # tf_list.append(tvt.Resize((cfg.resize['height'], cfg.resize['width'])))
+    tf_list.append(tvt.ToTensor())
+    if cfg.normalize:
+        tf_list.append(instantiate(cfg.normalize))
+
+        # tf_list.append(tvt.Normalize(**cfg.normalize))
     transform = tvt.Compose(tf_list)
     return transform
     
 def load_vision_dataset(cfg: DatasetConfig) -> tuple[data.Dataset, data.Dataset, DatasetModelSpec]:
     # Deprecated in favor of load raw dataset
-       
-    transforms = [get_train_transform(cfg.transforms),
-                get_test_transform(cfg.transforms)]
+    
+    if cfg.transforms is None:
+        transforms = [tvt.ToTensor(), tvt.ToTensor()]
+    else:
+        transforms = [get_train_transform(cfg.transforms),
+                    get_test_transform(cfg.transforms)]
     raw_train, raw_test, model_spec = fetch_torchvision_dataset(dataset_name=cfg.name, root=cfg.data_path, transforms= transforms)
 
     if cfg.subsample:

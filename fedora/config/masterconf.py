@@ -8,6 +8,7 @@ import os
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import to_absolute_path, get_object
+from hydra.utils import instantiate
 import torch
 from torch import cuda
 from torch.backends import mps
@@ -32,29 +33,9 @@ from fedora.strategy.cgsv import CgsvStrategy
 # from fedora.utils import Range, get_free_gpus, arg_check, get_free_gpu
 from fedora.config.strategyconf import StrategyConfig, register_strategy_configs
 
-from fedora.config.commonconf import TrainConfig, ModelConfigGN, ModelInitConfig, DatasetConfig, SimConfig, default_resources, ModelConfig, ServerConfig
+from fedora.config.commonconf import TrainConfig, ModelConfigGN, ModelInitConfig, DatasetConfig, SimConfig, default_resources, ModelConfig, ServerConfig, initialize_module, partial_initialize_module
 from fedora.config.clientconf import ClientConfig, register_client_configs
 logger = logging.getLogger(__name__)
-
-OPTIMIZER_MAPS = {
-    "adam": torch.optim.Adam,
-    "sgd": torch.optim.SGD,
-    "adamw": torch.optim.AdamW,
-    "adagrad": torch.optim.Adagrad,
-    "adadelta": torch.optim.Adadelta,
-    "rmsprop": torch.optim.RMSprop
-}
-
-LRSCHEDULER_MAPS = {
-    "step": torch.optim.lr_scheduler.StepLR,
-    "multistep": torch.optim.lr_scheduler.MultiStepLR,
-    "exponential": torch.optim.lr_scheduler.ExponentialLR,
-    "cosine": torch.optim.lr_scheduler.CosineAnnealingLR,
-    "plateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
-    "cyclic": torch.optim.lr_scheduler.CyclicLR,
-    "onecycle": torch.optim.lr_scheduler.OneCycleLR,
-    "cosine_warmup": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
-}
 
 CLIENT_MAPS = {
     "fedstdev": FedstdevClient,
@@ -83,8 +64,7 @@ STRATEGY_MAPS = {
 
 @dataclass
 class StrategySchema:
-    _target_: str
-    # _partial_: bool
+    name: str
     cfg: StrategyConfig
 
 ########## Client Configurations ##########
@@ -92,24 +72,29 @@ class StrategySchema:
 
 @dataclass
 class ClientSchema:
-    _target_: str
-    _partial_: bool
+
+    name: str
     cfg: ClientConfig
     train_cfg: TrainConfig
 
 
-
-
 @dataclass
 class ServerSchema:
-    _target_: str
-    _partial_: bool
+    name: str
     cfg: ServerConfig
     train_cfg: TrainConfig
 
+def get_client_partial(client_schema: ClientSchema)->partial[BaseFlowerClient]:
+    return partial_initialize_module(CLIENT_MAPS, client_schema, ignore_args=["client_id", "model", "dataset"])
 
+def get_server_partial(server_schema: ServerSchema)->partial[BaseFlowerServer]:
+    return partial_initialize_module(SERVER_MAPS, server_schema, ignore_args=["clients", "model", "strategy", "dataset", "result_manager"])
 
-########## Master Configurations ##########
+def get_strategy_partial(strategy_schema: StrategySchema)->partial[FedAvgStrategy]:
+    return partial_initialize_module(STRATEGY_MAPS, strategy_schema, ignore_args=["model", "res_man"])
+
+########## Master Configurations ######
+# ####
 @dataclass
 class Config:
     mode: str = field()
@@ -128,6 +113,13 @@ class Config:
     # metrics: MetricConfig = field(default=MetricConfig)
 
     def __post_init__(self):
+
+        self.server_partial = get_server_partial(self.server)
+
+        self.client_partial = get_client_partial(self.client)
+
+        self.strategy_partial = get_strategy_partial(self.strategy)
+   
         if self.simulator.mode == "centralized":
             self.dataset.federated = False
             logger.info("Setting federated cfg in dataset cfg to False")
@@ -187,7 +179,6 @@ def register_configs():
     cs.store(group="server", name="base_server", node=ServerSchema)
     cs.store(group="server", name="base_flower_server", node=ServerSchema)
     cs.store(group="strategy", name="strategy_schema", node=StrategySchema)
-
     cs.store(group="train_cfg", name="base_train", node=TrainConfig)
    
 

@@ -1,3 +1,2 @@
-_target_: fedora.models.twocnn.TwoCNN
-# _partial_: false
+name: twocnn
 hidden_size: 200

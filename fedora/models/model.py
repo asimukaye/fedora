@@ -1,13 +1,24 @@
 import torch
 from torch.nn import Module
+from torch import Tensor
 import inspect
 import logging
 import importlib
 from hydra.utils import instantiate
-from fedora.config.commonconf import ModelConfig, ModelInitConfig
+from dataclasses import asdict
+from .twocnn import TwoCNN
+from .twonn import TwoNN
+from .resnet import ResNet, ResNet18, ResNet34
+
+from fedora.config.commonconf import ModelConfig, ModelInitConfig, initialize_module
 
 logger = logging.getLogger(__name__)
 
+
+MODEL_MAP = {
+    "twocnn": TwoCNN,
+    "twonn": TwoNN,
+}
 
 #########################
 # Weight initialization #
@@ -26,37 +37,43 @@ def init_weights(model: Module, init_type, init_gain):
     def init_func(m: Module):  # define the initialization function
         classname = m.__class__.__name__
         if classname.find('BatchNorm2d') != -1:
-            if hasattr(m, 'weight') and m.weight is not None:
-                torch.nn.init.normal_(m.weight.data, mean=1.0, std=init_gain)
+            if hasattr(m, 'weight'):
+                if isinstance(m.weight, Tensor):
+                    torch.nn.init.normal_(m.weight.data, mean=1.0, std=init_gain)
+            if hasattr(m, 'bias'):
+                if isinstance(m.bias, Tensor):
+                    torch.nn.init.constant_(m.bias.data, 0.0)
+        elif (classname.find('Conv') != -1 or classname.find('Linear') != -1):
+            if hasattr(m, 'weight'):
+                if isinstance(m.weight, Tensor):
+                    if init_type == 'normal':
+                        torch.nn.init.normal_(m.weight.data, mean=0.0, std=init_gain)
+                    elif init_type == 'xavier':
+                        torch.nn.init.xavier_normal_(m.weight.data, gain=init_gain)
+                    elif init_type == 'xavier_uniform':
+                        torch.nn.init.xavier_uniform_(m.weight.data, gain=1.0)
+                    elif init_type == 'kaiming':
+                        torch.nn.init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
+                    elif init_type == 'orthogonal':
+                        torch.nn.init.orthogonal_(m.weight.data, gain=init_gain)
+                    elif init_type == 'none':  # uses pytorch's default init method
+                        m.reset_parameters()
+                    else:
+                        raise NotImplementedError(f'[ERROR] Initialization method {init_type} is not implemented!')
             if hasattr(m, 'bias') and m.bias is not None:
-                torch.nn.init.constant_(m.bias.data, 0.0)
-        elif hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
-            if init_type == 'normal':
-                torch.nn.init.normal_(m.weight.data, mean=0.0, std=init_gain)
-            elif init_type == 'xavier':
-                torch.nn.init.xavier_normal_(m.weight.data, gain=init_gain)
-            elif init_type == 'xavier_uniform':
-                torch.nn.init.xavier_uniform_(m.weight.data, gain=1.0)
-            elif init_type == 'kaiming':
-                torch.nn.init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
-            elif init_type == 'orthogonal':
-                torch.nn.init.orthogonal_(m.weight.data, gain=init_gain)
-            elif init_type == 'none':  # uses pytorch's default init method
-                m.reset_parameters()
-            else:
-                raise NotImplementedError(f'[ERROR] Initialization method {init_type} is not implemented!')
-            if hasattr(m, 'bias') and m.bias is not None:
-                torch.nn.init.constant_(m.bias.data, 0.0)
+                if isinstance(m.bias, Tensor):
+                    torch.nn.init.constant_(m.bias.data, 0.0)
     model.apply(init_func)
 
 def init_model(cfg: ModelConfig, init_cfg: ModelInitConfig, model_args= {}) -> Module:
     # initialize the model class 
-    model: Module = instantiate(cfg, **model_args)
+    cfg_dict = cfg.__dict__.copy()
+    cfg_dict.update(model_args)
+    model: Module = initialize_module(MODEL_MAP, cfg_dict)
 
     init_weights(model, init_cfg.init_type, init_cfg.init_gain)
 
-
-    logger.info(f'[MODEL] Initialized model: {cfg._target_.split(".")[-1]}; (Initialization type: {init_cfg.init_type.upper()}))!')
+    logger.info(f'[MODEL] Initialized model: {cfg.name}; (Initialization type: {init_cfg.init_type.upper()}))!')
     return model
 
 
@@ -77,14 +94,4 @@ def load_model(args: ModelConfig):
 
     # get model instance
     model = model_class(**model_args)
-
-    # adjust arguments if needed
-    # if args.use_pt_model:
-    #     args.num_embeddings = model.num_embeddings
-    #     args.embedding_size = model.embedding_size
-    #     args.num_hiddens = model.num_hiddens
-    #     args.dropout = model.dropout
-    
-    # if args.name == 'LogReg':
-    #     args.criterion = torch.nn.NLLLoss
     return model, args

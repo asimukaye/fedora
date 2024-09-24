@@ -8,7 +8,7 @@ from torch.nn import Module
 from torch.backends import mps
 from torch.utils.data import Dataset
 import flwr as fl
-from hydra.utils import instantiate
+# from hydra.utils import instantiate
 
 from fedora.utils import generate_client_ids
 from fedora.config.masterconf import Config
@@ -50,10 +50,12 @@ def run_flower_simulation(
 
     result_manager = ResultManager(cfg.simulator, logger=logger)
 
-    strategy = instantiate(cfg.strategy, model=model, res_man=result_manager)
+    # strategy = instantiate(cfg.strategy, model=model, res_man=result_manager)
+    strategy = cfg.strategy_partial(model=model, res_man=result_manager)
 
-    flwr_strategy_partial = instantiate(cfg.server)
-    flwr_strategy: BaseFlowerServer = flwr_strategy_partial(
+    flwr_strategy_partial = cfg.server_partial
+
+    flwr_strategy = flwr_strategy_partial(
         model=model,
         dataset=server_dataset,
         clients=clients,
@@ -76,7 +78,8 @@ def run_flower_simulation(
         with open(f"client_{partition_id}.json", "w") as f:
             json.dump(context.__dict__, f)
             
-        client_partial: partial = instantiate(cfg.client)
+        # client_partial: partial = instantiate(cfg.client)
+        client_partial = cfg.client_partial
     
         # cid = str(context.node_id)
         partition_id = int(context.node_config["partition_id"])

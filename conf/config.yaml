@@ -1,9 +1,9 @@
 %YAML 1.2
 ---
-# mode: fedavg
+mode: fedavg
 # mode: centralized
-mode: debug
-desc: "FedAvg run with twocnn model and cifar10 dataset, patho 3, 200 rounds, 1 epochs"
+# mode: debug
+desc: "FedAvg run with twocnn model and cifar10 dataset, patho 3, 50 rounds, 4 epochs"
 # desc: "Centralized training w epochs and rounds interchanged. sanity check"
 
 
@@ -40,7 +40,7 @@ simulator:
   save_csv: true
   out_prefix: ''
   num_clients: 6
-  num_rounds: 200
+  num_rounds: 50
   checkpoint_every: 10
   eval_type: both
   eval_every: 1
@@ -48,23 +48,20 @@ simulator:
     num_cpus: 2
     num_gpus: 0.5 #TODO: Couple this with device init
 
+
+
 train_cfg:
-  epochs: 1
+  epochs: 4
   device: auto
   batch_size: 128
   eval_batch_size: 128
-  lr: 0.01
-  lr_decay: 0.977
   optimizer:
-    _target_: torch.optim.SGD
-    _partial_: true
-    lr: ${train_cfg.lr}
-  criterion:
-    _target_: torch.nn.CrossEntropyLoss
+    name: sgd
+    lr: 0.01
+  loss_name: crossentropy
   lr_scheduler:
-    _target_: torch.optim.lr_scheduler.ExponentialLR
-    _partial_: true
-    gamma: ${train_cfg.lr_decay}
+    name: exponential
+    gamma: 0.977 # lr_decay
   metric_cfg:
     eval_metrics: ['acc1']
     file_prefix: ''

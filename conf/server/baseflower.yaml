@@ -2,8 +2,7 @@ defaults:
   - base_flower_server
   - _self_
 
-_target_: fedora.server.baseserver.BaseFlowerServer
-_partial_: true
+name: baseflower
 cfg:
   eval_every: ${simulator.eval_every}
   eval_type: ${simulator.eval_type}

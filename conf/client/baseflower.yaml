@@ -3,8 +3,8 @@ defaults:
   - cfg: base_client
   - _self_
 
-_target_: fedora.client.baseclient.BaseFlowerClient
-_partial_: true
+
+name: baseflower
 cfg:
   start_epoch: 0
   data_shuffle: true

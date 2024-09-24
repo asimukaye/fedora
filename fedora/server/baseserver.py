@@ -149,13 +149,14 @@ class BaseFlowerServer(ABCServer, fl_strat.Strategy):
             self.result_manager = result_manager
 
         self.param_keys = list(self.model.state_dict().keys())
-        defaults = dict(lr=train_cfg.lr)
+        defaults = dict(lr=train_cfg.optimizer['lr'])
         self._optimizer = torch.optim.Optimizer(
             self.model.parameters(), defaults=defaults
         )
 
-        lrs_partial = train_cfg.lr_scheduler
-        self.lr_scheduler: LRScheduler = lrs_partial(self._optimizer)  # type: ignore
+        # lrs_partial = train_cfg.lr_scheduler
+        lrs_partial = train_cfg.lr_scheduler_partial
+        self.lr_scheduler: LRScheduler = lrs_partial(self._optimizer)
 
     @classmethod
     def broadcast_model(

@@ -22,7 +22,7 @@ import fedora.customtypes as fT
 logger = logging.getLogger(__name__)
 
  # NOTE: Multithreading causes atleast 3x slowdown for 2 epoch case. DO not use until necessary
-def train_one_model(model:Module, dataloader: DataLoader, seed: int, cfg: TrainConfig, optim_partial, criterion, mm: MetricManager)->t.Tuple[int, Module,fT.Result]:
+def train_one_model(model:Module, dataloader: DataLoader, seed: int, cfg: TrainConfig, optim_partial, loss_fn, mm: MetricManager)->t.Tuple[int, Module,fT.Result]:
     out_result = fT.Result()
     optimizer: Optimizer = optim_partial(model.parameters())
     model.train()
@@ -35,7 +35,7 @@ def train_one_model(model:Module, dataloader: DataLoader, seed: int, cfg: TrainC
             model.zero_grad(set_to_none=True)
 
             outputs: Tensor = model(inputs)
-            loss: Tensor = criterion(outputs, targets)
+            loss: Tensor = loss_fn(outputs, targets)
             loss.backward()
             optimizer.step()
 
@@ -95,7 +95,7 @@ class FedstdevClient(BaseFlowerClient):
 
         self._optimizer_map: dict[int, Optimizer] = {}
         for seed, model in self._model_map.items():
-            self._optimizer_map[seed] = self.optim_partial(model.parameters())
+            self._optimizer_map[seed] = self.train_cfg.optim_partial(model.parameters())
 
         self._param_std :fT.ActorParams_t  = self._model.state_dict()
         self._grad_mu : fT.ActorDeltas_t = {p_key: torch.empty_like(param.data) for p_key, param in self._model.named_parameters()}
@@ -201,7 +201,7 @@ class FedstdevClient(BaseFlowerClient):
         self.train_loader_map = self._create_shuffled_loaders(self.training_set, self.cfg.seeds)
         for seed, model in self._model_map.items():
             model.load_state_dict(train_ins.in_params)
-            self._optimizer_map[seed] = self.optim_partial(model.parameters())
+            self._optimizer_map[seed] = self.train_cfg.optim_partial(model.parameters())
             # self.metric_mngr.json_dump(self.train_loader_map[seed].dataset.indices.tolist(), 'indices', 'train', f'seed_{seed}')
         # Run an round on the client
         # empty_grads = {p_key: torch.empty_like(param.data, device=self.train_cfg.device) for p_key, param in self._model.named_parameters()}
@@ -235,7 +235,7 @@ class FedstdevClient(BaseFlowerClient):
                     model.zero_grad(set_to_none=True)
 
                     outputs: Tensor = model(inputs)
-                    loss: Tensor = self.criterion(outputs, targets) # type: ignore
+                    loss: Tensor = self.loss_fn(outputs, targets) # type: ignore
                     loss.backward()
                     optimizer.step()
                     # for p_key, param in model.named_parameters():
@@ -281,7 +281,7 @@ class FedstdevClient(BaseFlowerClient):
         out_result = fT.Result()
         # for seed, model in self._model_map.items():   
         with ThreadPoolExecutor(max_workers=len(self._model_map)) as exec:
-            futures = {exec.submit(train_one_model, model, self.train_loader_map[seed], seed, self.train_cfg, self.optim_partial, self.criterion, deepcopy(self.metric_mngr)) for seed, model in self._model_map.items()}
+            futures = {exec.submit(train_one_model, model, self.train_loader_map[seed], seed, self.train_cfg, self.train_cfg.optim_partial, self.loss_fn, deepcopy(self.metric_mngr)) for seed, model in self._model_map.items()}
             for fut in as_completed(futures):
                 seed, model, out_result = fut.result()
                 self._model_map[seed] = model

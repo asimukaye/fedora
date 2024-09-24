@@ -14,7 +14,7 @@ import wandb
 from torch.nn import Module
 from torch.backends import cudnn, mps
 from torch.utils.data import DataLoader, Subset, ConcatDataset, Dataset
-from hydra.utils import instantiate
+# from hydra.utils import instantiate
 import flwr as fl
 
 # from fedora.server.baseserver import BaseServer
@@ -96,9 +96,9 @@ class Simulator:
         self.sim_cfg: SimConfig = cfg.simulator
 
         logger.info(f"[SIM MODE] : {self.sim_cfg.mode}")
-        logger.info(f'[SERVER] : {self.cfg.server._target_.split(".")[-1]}')
-        logger.info(f'[STRATEGY] : {self.cfg.strategy._target_.split(".")[-1]}')
-        logger.info(f'[CLIENT] : {self.cfg.client._target_.split(".")[-1]}')
+        logger.info(f'[SERVER] : {self.cfg.server.name}')
+        logger.info(f'[STRATEGY] : {self.cfg.strategy.name}')
+        logger.info(f'[CLIENT] : {self.cfg.client.name}')
 
         logger.info(f"[NUM ROUNDS] : {self.sim_cfg.num_rounds}")
         set_seed(cfg.simulator.seed)

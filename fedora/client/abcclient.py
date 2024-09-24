@@ -27,12 +27,12 @@ def simple_evaluator(model: Module,
     mm._round = round
     model.eval()
     model.to(cfg.device)
-    criterion = cfg.criterion
+    # criterion = cfg.criterion
 
     for inputs, targets in tqdm(dataloader):
         inputs, targets = inputs.to(cfg.device), targets.to(cfg.device)
         outputs = model(inputs)
-        loss: Tensor = criterion(outputs, targets) #type: ignore
+        loss: Tensor = cfg.loss_fn(outputs, targets) 
         mm.track(loss.item(), outputs, targets)
     else:
         result = mm.aggregate(len(dataloader.dataset), -1) # type: ignore
@@ -50,7 +50,7 @@ def simple_trainer(model: Module,
     model.train()
     # model.float()
     model.to(cfg.device)
-    criterion  = cfg.criterion
+    # criterion  = cfg.criterion
     optim_partial: functools.partial = cfg.optimizer #type: ignore
     optimizer: Optimizer = optim_partial(model.parameters(), lr=cfg.lr)
 
@@ -58,7 +58,7 @@ def simple_trainer(model: Module,
         optimizer.zero_grad()
         inputs, targets = inputs.to(cfg.device), targets.to(cfg.device)
         outputs = model(inputs)
-        loss: Tensor = criterion(outputs, targets) #type: ignore
+        loss: Tensor = cfg.loss_fn(outputs, targets) 
         loss.backward()
         optimizer.step()
         mm.track(loss.item(), outputs, targets)

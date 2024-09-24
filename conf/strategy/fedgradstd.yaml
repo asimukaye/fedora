@@ -3,7 +3,7 @@ defaults:
   - cfg: fedstdev_strategy
   - _self_
 
-_target_: fedora.strategy.fedgradstd.FedgradstdStrategy
+name: fedgradstd
 cfg:
   train_fraction: 1.0
   eval_fraction: 1.0

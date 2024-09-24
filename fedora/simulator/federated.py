@@ -5,9 +5,9 @@ from functools import partial
 from collections import defaultdict
 from torch.nn import Module
 from torch.utils.data import Dataset, DataLoader, Subset
-from hydra.utils import instantiate
+# from hydra.utils import instantiate
 
-from fedora.config.masterconf import Config, ClientSchema
+from fedora.config.masterconf import Config, ClientSchema, get_client_partial
 from fedora.results.resultmanager import ResultManager
 from fedora.results.metricmanager import MetricManager
 from fedora.client.abcclient import simple_evaluator, simple_trainer
@@ -20,21 +20,21 @@ import fedora.customtypes as fT
 
 logger = logging.getLogger(__name__)
 
-def _create_client(
-    cid: str, datasets: fT.DatasetPair_t, model: Module, client_cfg: ClientSchema
-) -> BaseFlowerClient:
+# def _create_client(
+#     cid: str, datasets: fT.DatasetPair_t, model: Module, client_cfg: ClientSchema
+# ) -> BaseFlowerClient:
 
-    client_partial: partial = instantiate(client_cfg)
-    # NOTE:IMPORTANT Sharing models without deepcopy could potentially have same references to parameters
-    # Always deepcopy the model
-    client: BaseFlowerClient = client_partial(
-        client_id=cid, dataset=datasets, model=deepcopy(model)
-    )
-    return client
+#     client_partial: partial = instantiate(client_cfg)
+#     # NOTE:IMPORTANT Sharing models without deepcopy could potentially have same references to parameters
+#     # Always deepcopy the model
+#     client: BaseFlowerClient = client_partial(
+#         client_id=cid, dataset=datasets, model=deepcopy(model)
+#     )
+#     return client
 
 
 def create_clients(
-    all_client_ids, client_datasets, model_instance, client_cfg: ClientSchema
+    all_client_ids, client_datasets, model_instance, client_partial: partial[BaseFlowerClient]
 ) -> dict[str, BaseFlowerClient]:
 
     clients = {}
@@ -42,7 +42,10 @@ def create_clients(
         zip(all_client_ids, client_datasets), logger=logger, desc=f"creating clients "
     ):
         # client_id = f'{idx:04}' # potential to convert to a unique hash
-        client_obj = _create_client(cid, datasets, model_instance, client_cfg)
+        client_obj: BaseFlowerClient = client_partial(
+        client_id=cid, dataset=datasets, model=deepcopy(model_instance)
+        )
+        # client_obj = _create_client(cid, datasets, model_instance, client_cfg)
         clients[cid] = client_obj
     return clients
 
@@ -65,15 +68,14 @@ def run_federated_simulation(
         final_result: The final result of the simulation.
     """
 
-    # model_instance: Module = instantiate(cfg.model.model_spec)
     all_client_ids = generate_client_ids(cfg.simulator.num_clients)
     make_checkpoint_dirs(has_server=True, client_ids=all_client_ids)
 
-    server_partial: partial = instantiate(cfg.server)
     clients: dict[str, BaseFlowerClient] = dict()
 
     result_manager = ResultManager(cfg.simulator, logger=logger)
-    strategy = instantiate(cfg.strategy, model=model_instance, res_man=result_manager)
+
+    strategy = cfg.strategy_partial(model=model_instance, res_man=result_manager)
 
     #  Server gets the test set
     # server_dataset = test_set
@@ -82,12 +84,12 @@ def run_federated_simulation(
 
     # NOTE:IMPORTANT Sharing models without deepcopy could potentially have same references to parameters
     clients = create_clients(
-        all_client_ids, client_datasets, model_instance, cfg.client
+        all_client_ids, client_datasets, model_instance, cfg.client_partial
     )
 
     # NOTE: later, consider making a copy of client to avoid simultaneous edits to clients dictionary
 
-    server: BaseFlowerServer = server_partial(
+    server: BaseFlowerServer = cfg.server_partial(
         model=model_instance,
         strategy=strategy,
         dataset=server_dataset,
@@ -154,15 +156,18 @@ def run_standalone_simulation(
 
     result_manager = ResultManager(cfg.simulator, logger=logger)
     metric_manager = MetricManager(cfg.train_cfg.metric_cfg, 0, actor="simulator")
+
     base_client_cfg = ClientSchema(
-        _target_="fedora.client.baseflowerclient.BaseFlowerClient",
-        _partial_=True,
+        name="BaseFlowerClient",
         cfg=cfg.client.cfg,
         train_cfg=cfg.train_cfg,
     )
-    clients = create_clients(all_client_ids, client_datasets, model, base_client_cfg)
+    
+    client_partial = get_client_partial(base_client_cfg)
+    clients = create_clients(all_client_ids, client_datasets, model, client_partial)
 
-    central_train_cfg = instantiate(cfg.train_cfg)
+    # central_train_cfg = instantiate(cfg.train_cfg)
+    # central_train_cfg = partial_inig(cfg.train_cfg)
 
     client_params = {cid: client.model.state_dict() for cid, client in clients.items()}
 
@@ -198,7 +203,7 @@ def run_standalone_simulation(
         aggregate_params = parameter_average_aggregation(client_params)
         central_model.load_state_dict(aggregate_params)
         central_eval = simple_evaluator(
-            central_model, test_loader, central_train_cfg, metric_manager, curr_round
+            central_model, test_loader, cfg.train_cfg, metric_manager, curr_round
         )
 
         result_manager.log_general_result(

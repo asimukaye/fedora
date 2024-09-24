@@ -3,7 +3,7 @@ defaults:
   - cfg: base_strategy
   - _self_
 
-_target_: fedora.strategy.fedavg.FedAvgStrategy
+name: fedavg
 cfg:
   train_fraction: 1.0
   eval_fraction: 1.0
