@@ -8,7 +8,7 @@ from hydra.utils import instantiate
 from dataclasses import asdict
 from .twocnn import TwoCNN
 from .twonn import TwoNN
-from .resnet import ResNet, ResNet18, ResNet34
+from .resnet import ResNet18, ResNet34
 
 from fedora.config.commonconf import ModelConfig, ModelInitConfig, initialize_module
 
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 MODEL_MAP = {
     "twocnn": TwoCNN,
     "twonn": TwoNN,
+    "resnet18": ResNet18,
+    "resnet34": ResNet34
 }
 
 #########################

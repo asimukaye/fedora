@@ -1,0 +1,2 @@
+name: dataimbalance
+num_splits: ${simulator.num_clients}

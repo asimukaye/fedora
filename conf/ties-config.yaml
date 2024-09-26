@@ -11,6 +11,7 @@ defaults:
   - strategy: ties
   - client: baseflower
   - dataset: cifar10
+  - split: iid
   # - dataset: bloodmnist
   # - dataset: fedisic
   # - model: resnet18gn
@@ -58,28 +59,6 @@ train_cfg:
 dataset:
   subsample: false
   subsample_fraction: 1.0 # Fraction of the dataset to use. Only works when subsample is true
-  split_conf:
-    # split_type: n_label_flipped_clients
-    # split_type: n_distinct_label_flipped_clients
-    # split_type: n_noisy_clients
-    # split_type: n_distinct_noisy_clients
-    split_type: patho
-    # split_type: dirichlet
-    # split_type: one_imbalanced_client
-    # split_type: iid
-    # split_type: one_noisy_client
-    num_splits: ${simulator.num_clients}
-    num_class_per_client: 3 # classes per client for patho split type
-    # num_noisy_clients: 1
-    num_noisy_clients: 3
-    dirichlet_alpha: 10.0
-    noise:
-      mu: 0.0
-      sigma: 0.5
-      flip_percent: 0.5
-      # mu: [0.0, 0.0, 0.0, 0.0, 0.0]
-      # sigma: [1.0, 0.75, 0.5, 0.25, 0.1]
-      # flip_percent: [0.9, 0.75, 0.5, 0.25, 0.1]
 
 model_init:
   init_type: xavier
@@ -94,6 +73,6 @@ strategy:
 #   cfg:
 #     data_shuffle: True
 
-log_conf: []
+log_cfg: []
 
 ...

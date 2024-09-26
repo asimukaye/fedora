@@ -15,7 +15,7 @@ from fedora.splits.split import get_client_datasets
 import torchvision.transforms.v2 as tvt
 logger = logging.getLogger(__name__)
 from fedora.config.commonconf import DatasetConfig, TransformsConfig, DatasetModelSpec, initialize_module, partial_initialize_module
-
+from fedora.config.splitconf import SplitConfig
 
 def get_train_transform(cfg: TransformsConfig):
     # FIXME: work
@@ -130,11 +130,11 @@ def pool_datasets(cfg: DatasetConfig, client_sets: list[fT.DatasetPair_t]):
     return pooled_train, pooled_test
         
 
-def load_federated_dataset(cfg: DatasetConfig) -> tuple[ fT.ClientDatasets_t, data.Dataset, DatasetModelSpec]:
-    if cfg.split_conf.split_type == 'defacto':
+def load_federated_dataset(cfg: DatasetConfig, split_cfg: SplitConfig) -> tuple[ fT.ClientDatasets_t, data.Dataset, DatasetModelSpec]:
+    if split_cfg.name == 'natural':
         # Use the originally provided splits
         if cfg.dataset_family == 'flamby':
-            client_datasets, raw_test = fetch_flamby_federated(dataset_name=cfg.name, root=cfg.data_path, num_splits=cfg.split_conf.num_splits)
+            client_datasets, raw_test = fetch_flamby_federated(dataset_name=cfg.name, root=cfg.data_path, num_splits=split_cfg.num_splits)
             model_spec = get_flamby_model_spec(dataset_name=cfg.name, root=cfg.data_path)
         else:
             raise NotImplementedError()
@@ -142,7 +142,7 @@ def load_federated_dataset(cfg: DatasetConfig) -> tuple[ fT.ClientDatasets_t, da
         # Artificially simulate a client split
         raw_train, raw_test, model_spec = load_raw_dataset(cfg)
 
-        client_datasets = get_client_datasets(cfg.split_conf, raw_train, raw_test)
+        client_datasets = get_client_datasets(split_cfg, raw_train, raw_test)
 
     return client_datasets, raw_test, model_spec
 

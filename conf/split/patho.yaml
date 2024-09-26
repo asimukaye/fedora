@@ -1,0 +1,3 @@
+name: patho
+num_splits: ${simulator.num_clients}
+num_class_per_client: 3

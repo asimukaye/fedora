@@ -1,0 +1,5 @@
+name: noisylabel
+num_splits: ${simulator.num_clients}
+num_noisy_clients: 3
+noise_flip_percent: 0.5
+  # flip_percent: [0.9, 0.75, 0.5, 0.25, 0.1]

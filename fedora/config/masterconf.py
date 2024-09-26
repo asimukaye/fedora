@@ -1,18 +1,9 @@
 # Master config file to store config dataclasses and do validation
 from dataclasses import dataclass, field, asdict
-from typing import Optional
-import typing as t
 from functools import partial
-import os
 
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import to_absolute_path, get_object
-from hydra.utils import instantiate
-import torch
-from torch import cuda
-from torch.backends import mps
-from pandas import json_normalize
 import logging
 
 from fedora.client.baseclient import BaseFlowerClient
@@ -35,6 +26,7 @@ from fedora.config.strategyconf import StrategyConfig, register_strategy_configs
 
 from fedora.config.commonconf import TrainConfig, ModelConfigGN, ModelInitConfig, DatasetConfig, SimConfig, default_resources, ModelConfig, ServerConfig, initialize_module, partial_initialize_module
 from fedora.config.clientconf import ClientConfig, register_client_configs
+from fedora.config.splitconf import SplitConfig, register_split_configs
 logger = logging.getLogger(__name__)
 
 CLIENT_MAPS = {
@@ -68,7 +60,6 @@ class StrategySchema:
     cfg: StrategyConfig
 
 ########## Client Configurations ##########
-
 
 @dataclass
 class ClientSchema:
@@ -106,9 +97,10 @@ class Config:
     train_cfg: TrainConfig = field()
 
     dataset: DatasetConfig = field()
+    split: SplitConfig = field()
     model: ModelConfig = field()
     model_init: ModelInitConfig = field()
-    log_conf: list = field(default_factory=list)
+    log_cfg: list = field(default_factory=list)
 
     # metrics: MetricConfig = field(default=MetricConfig)
 
@@ -124,9 +116,10 @@ class Config:
             self.dataset.federated = False
             logger.info("Setting federated cfg in dataset cfg to False")
         else:
-            assert (
-                self.dataset.split_conf.num_splits == self.simulator.num_clients
-            ), "Number of clients in dataset and simulator should be equal"
+            if self.dataset.federated == True:
+                assert (
+                    self.split.num_splits == self.simulator.num_clients
+                ), "Number of clients in dataset and simulator should be equal"
 
         if self.train_cfg.device == "mps" or self.train_cfg.device == "cpu":
             # GPU support in flower for MPS is not available
@@ -151,14 +144,14 @@ def set_debug_mode(cfg: Config):
     logger.debug(f"[Debug Override] Setting epochs to: {cfg.client.train_cfg.epochs}")
 
     cfg.simulator.num_clients = 3
-    cfg.dataset.split_conf.num_splits = 3
-    if cfg.dataset.split_conf.split_type in [
-        "n_label_flipped_clients",
-        "n_noisy_clients",
-        "n_distinct_noisy_clients",
-        "n_distinct_label_flipped_clients",
-    ]:
-        cfg.dataset.split_conf.num_noisy_clients = 2
+    cfg.split.num_splits = 3
+    # if cfg.dataset.split_conf.name in [
+    #     "n_label_flipped_clients",
+    #     "n_noisy_clients",
+    #     "n_distinct_noisy_clients",
+    #     "n_distinct_label_flipped_clients",
+    # ]:
+    #     cfg.dataset.split_conf.num_noisy_clients = 2
     if hasattr(cfg.strategy.cfg, "num_clients"):
         cfg.strategy.cfg.num_clients = 3  # type: ignore
     logger.debug(
@@ -173,6 +166,8 @@ def register_configs():
     # Register a new configuration scheme to be validated against from the config file
     register_strategy_configs()
     register_client_configs()
+    register_split_configs()
+
     cs = ConfigStore.instance()
     cs.store(name="base_config", node=Config)
     cs.store(group="client", name="client_schema", node=ClientSchema)

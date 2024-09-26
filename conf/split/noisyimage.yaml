@@ -1,0 +1,7 @@
+name: noisyimage
+num_splits: ${simulator.num_clients}
+num_noisy_clients: 3
+noise_mu: 0.0
+noise_sigma: 0.5
+# noise_mu: [0.0, 0.0, 0.0, 0.0, 0.0]
+# noise_sigma: [1.0, 0.75, 0.5, 0.25, 0.1]

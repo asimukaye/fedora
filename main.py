@@ -23,7 +23,7 @@ def run_fedora(cfg: Config):
     logger.info((OmegaConf.to_yaml(cfg)))
     if cfg_obj.mode != "debug":
         input("Review Config. Press Enter to continue...")
-    # logger.debug(cfg_obj.dataset.split_conf.__dict__)
+    # logger.debug(cfg_obj.split.__dict__)
     # logger.debug(cfg_obj.client.cfg.__dict__)
 
     sim = Simulator(cfg_obj)

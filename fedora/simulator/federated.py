@@ -238,8 +238,8 @@ def run_single_client(
     make_checkpoint_dirs(has_server=False, client_ids=["single_client"])
 
     # Modify the dataset here:
-    split_conf = cfg.dataset.split_conf
-    logger.info(f"[DATA_SPLIT] Simulated dataset split : `{split_conf.split_type}`")
+ 
+    logger.info(f"[DATA_SPLIT] Simulated dataset split : `{cfg.split.name}`")
 
     result_manager = ResultManager(cfg.simulator, logger=logger)
 

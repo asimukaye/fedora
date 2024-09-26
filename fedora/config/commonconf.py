@@ -179,12 +179,6 @@ class TrainConfig:
     metric_cfg: MetricConfig = field()
 
     def __post_init__(self):
-        # if self.lr_scheduler:
-        #     check_module_args(LRSCHEDULER_MAPS[self.lr_scheduler.name])
-
-        # ic("post_init)")
-        # optim_args = check_module_args(OPTIMIZER_MAPS, self.optimizer, ignore_args=["params"])
-        # self.optim_partial: partial[torch.optim.Optimizer] = partial(OPTIMIZER_MAPS[self.optimizer["name"]], optim_args)
         self.optim_partial: partial[Optimizer] = partial_initialize_module(OPTIMIZER_MAP, self.optimizer, ignore_args=["params"])
         if self.lr_scheduler:
             self.lr_scheduler_partial: partial[LRScheduler] = partial_initialize_module(LRSCHEDULER_MAP, self.lr_scheduler, ignore_args=["optimizer"])
@@ -210,10 +204,6 @@ class TrainConfig:
             else:
                 self.device = "cpu"
             logger.info(f"Auto Configured device to: {self.device}")
-        # if self.lr_scheduler:
-        #     arg_check(self.lr_scheduler)
-        
-        # arg_check(self.optimizer)
 
 ########## Dataset configurataions ##########
 
@@ -238,7 +228,6 @@ class TransformsConfig:
     # construct
 
 
-
 @dataclass
 class DatasetConfig:
     name: str
@@ -248,17 +237,14 @@ class DatasetConfig:
     test_fraction: Optional[float]
     seed: Optional[int]
     federated: bool
-    split_conf: SplitConfig
+    # split_conf: SplitConfig
     subsample: bool = False
     subsample_fraction: float = 0.0  # subsample the dataset with the given fraction
 
     def __post_init__(self):
         # assert self.test_fraction == Range(0.0, 1.0), f'Invalid value {self.test_fraction} for test fraction'
         self.data_path = to_absolute_path(self.data_path)
-        if self.federated == False:
-            assert (
-                self.split_conf.num_splits == 1
-            ), "Non-federated datasets should have only one split"
+
 
 
 ########## Model Configurations ##########

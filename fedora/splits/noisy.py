@@ -71,7 +71,7 @@ class LabelNoiseSubset(Subset):
             mapped_ids = np.array(checked_dataset.indices)
         
         # ic(len(dataset), len(checked_dataset), len(mapped_ids))
-        self.subset = self._flip_set(dataset, checked_dataset, mapped_ids, flip_pct) 
+        self.subset = self._flip_set(dataset, checked_dataset, mapped_ids, flip_pct) # type: ignore
 
     def _flip_set(self, subset:Subset, dataset: MappedDataset, mapped_ids:np.ndarray, flip_pct: float) -> Subset:
         total_size = len(subset)
@@ -122,6 +122,7 @@ class NoisySubset(Subset):
     """Wrapper of `torch.utils.Subset` module for applying individual transform.
     """
     def __init__(self, subset: Subset,  mean:float, std: float):
+    # def __init__(self, subset: Subset,  mean:float, std: float):
         self.dataset = subset.dataset
         self.indices = subset.indices
         self._subset = subset

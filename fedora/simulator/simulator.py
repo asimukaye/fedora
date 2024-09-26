@@ -75,7 +75,7 @@ def init_dataset_and_model(cfg: Config) -> tuple[fT.ClientDatasets_t, Dataset, M
     """Initialize the dataset and the model here"""
     # NOTE: THIS FUNCTION MODIFIES THE RANDOM NUMBER SEEDS
 
-    client_sets, test_set, dataset_model_spec = load_federated_dataset(cfg.dataset)
+    client_sets, test_set, dataset_model_spec = load_federated_dataset(cfg.dataset, cfg.split)
 
     model_args = asdict(dataset_model_spec)
     model_instance = init_model(cfg.model, cfg.model_init, model_args)
