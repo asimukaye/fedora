@@ -15,6 +15,7 @@ import fedora.customtypes as fT
 
 # Type declarations
 
+
 def add_param_deltas(server_params: fT.ActorParams_t,
                       server_deltas: fT.ActorDeltas_t) -> fT.ActorParams_t:
     '''Add deltas to the server parameters'''

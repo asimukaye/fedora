@@ -42,12 +42,11 @@ class WeightingStrategy(str, Enum):
 
 
 # Type declarations
-ScalarWeights_t = dict[str, float]
-TensorWeights_t = dict[str, Tensor]
-Weights_T =t.TypeVar('Weights_T', ScalarWeights_t, TensorWeights_t)
+
+Weights_T =t.TypeVar('Weights_T', fT.ScalarWeights_t, fT.TensorWeights_t)
 # AllIns_t = dict[str, FedstdevIns]
-ClientScalarWeights_t= dict[str, ScalarWeights_t]
-ClientTensorWeights_t= dict[str, TensorWeights_t]
+ClientScalarWeights_t= dict[str, fT.ScalarWeights_t]
+ClientTensorWeights_t= dict[str, fT.TensorWeights_t]
 
 def get_dict_avg(param_dict: dict, wts: dict) -> dict:
     # Helper function to compute average of the last layer of the dictionary

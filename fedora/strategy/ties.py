@@ -20,11 +20,7 @@ from fedora.strategy.fedavg import (
 from fedora.results.resultmanager import ResultManager
 
 # Type declarations
-ScalarWeights_t = dict[str, float]
-TensorWeights_t = dict[str, Tensor]
 
-
-# @dataclass
 class TiesCfgProtocol(t.Protocol):
     """Protocol for base strategy config"""
 
@@ -35,7 +31,6 @@ class TiesCfgProtocol(t.Protocol):
     merge_func: str = "dis-mean"
 
 
-# @dataclass
 class TiesInsProtocol(t.Protocol):
     client_params: fT.ActorParams_t
     data_size: int

@@ -6,6 +6,9 @@ from torch import Tensor
 import typing as t
 from torch.utils.data import Subset, Dataset
 
+ScalarWeights_t = dict[str, float]
+TensorWeights_t = dict[str, Tensor]
+
 ClientIds_t =  list[str]
 ActorParams_t = dict[str, Parameter]
 ActorParamlist_t = list[Parameter]

@@ -15,7 +15,7 @@ from torch.nn.functional import cosine_similarity, tanh
 from fedora.results.resultmanager import ResultManager
 # from fedora.strategy import *
 from fedora.strategy.abcstrategy import ABCStrategy, StrategyIns, StrategyOuts, AllClientIns_t
-from fedora.strategy.fedavg import random_client_selection, ClientInProto, ScalarWeights_t
+from fedora.strategy.fedavg import random_client_selection, ClientInProto
 import fedora.customtypes as fT
 from fedora.utils import generate_client_ids
 from fedora.strategy.fedopt import compute_server_delta_w_normalize, compute_server_delta, add_param_deltas
@@ -125,7 +125,7 @@ class CgsvStrategy(ABCStrategy):
     #     mask[:int(q)] = 1
     #     return mask
     
-    def _sparsify_gradients(self, wts: ScalarWeights_t,
+    def _sparsify_gradients(self, wts: fT.ScalarWeights_t,
                             server_deltas: fT.ActorDeltas_t,
                             beta: float) -> tuple[dict[str, fT.ActorDeltas_t], dict[str, int]]:
         """

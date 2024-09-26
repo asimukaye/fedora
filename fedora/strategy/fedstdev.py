@@ -3,6 +3,7 @@ import typing as t
 from dataclasses import dataclass, field
 import numpy as np
 import torch
+import logging
 
 from torch.nn import Module, Parameter
 from torch import Tensor
@@ -17,6 +18,8 @@ from fedora.strategy.fedopt import gradient_average_update, add_param_deltas
 ### Define the configurations required for this strategy
 from fedora.utils import generate_client_ids
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 @dataclass
 class FedstdevCfgProtocol(t.Protocol):
     '''Protocol for Fedstdev strategy config'''
@@ -37,12 +40,11 @@ class WeightingStrategy(str, Enum):
     PARAM_SIGMA_BY_MU_SCALAR_WTD_AVG = 'param_sigma_by_mu_scalar_wtd_avg'
     PARAM_SIGMA_BY_MU_LAYER_WISE = 'param_sigma_by_mu_layer_wise'
 # Type declarations
-ScalarWeights_t = dict[str, float]
-TensorWeights_t = dict[str, Tensor]
-Weights_T =t.TypeVar('Weights_T', ScalarWeights_t, TensorWeights_t)
+
+Weights_T =t.TypeVar('Weights_T', fT.ScalarWeights_t, fT.TensorWeights_t)
 # AllIns_t = dict[str, FedstdevIns]
-ClientScalarWeights_t= dict[str, ScalarWeights_t]
-ClientTensorWeights_t= dict[str, TensorWeights_t]
+ClientScalarWeights_t= dict[str, fT.ScalarWeights_t]
+ClientTensorWeights_t= dict[str, fT.TensorWeights_t]
 
 def get_dict_avg(param_dict: dict, wts: dict) -> dict:
     # Helper function to compute average of the last layer of the dictionary

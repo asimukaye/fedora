@@ -15,11 +15,6 @@ from fedora.strategy.abcstrategy import *
 # from fedora.strategy.abcstrategy import StrategyIns
 from fedora.results.resultmanager import ResultManager
 
-# Type declarations
-ScalarWeights_t = dict[str, float]
-TensorWeights_t = dict[str, Tensor]
-
-
 def passthrough_communication(ins: t.Any) -> t.Any:
     """Simple passthrough communication logic"""
     return ins

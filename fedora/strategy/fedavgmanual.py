@@ -17,10 +17,6 @@ from fedora.utils import generate_client_ids
 
 from fedora.results.resultmanager import ResultManager
 
-# Type declarations
-ScalarWeights_t = dict[str, float]
-TensorWeights_t = dict[str, Tensor]
-
 @dataclass
 class StrategyCfgProtocol(t.Protocol):
     '''Protocol for fedavg manual strategy config'''
