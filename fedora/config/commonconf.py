@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field, asdict, is_dataclass
 import os
+import psutil
 import inspect
 from typing import Optional
 from functools import partial
@@ -110,23 +111,38 @@ def default_resources():
 
 
 # TODO: Isolate result manager configs from this
+@dataclass
+class ResultConfig:
+    use_tensorboard: bool
+    use_wandb: bool
+    save_csv: bool
+    out_prefix: Optional[str] = field(default="")
+    # plot_every: int = field(default=10)
+
+    def __post_init__(self):
+        assert (
+            self.use_tensorboard or self.use_wandb or self.save_csv
+        ), f"Select any one logging method atleast to avoid losing results"
+
 # TODO: Develop a client and strategy compatibility checker
 @dataclass
 class SimConfig:
     seed: int
     num_clients: int
-    use_tensorboard: bool
+    # use_tensorboard: bool
     num_rounds: int
-    use_wandb: bool
-    save_csv: bool
+    # use_wandb: bool
+    # save_csv: bool
+    device: str = field()
     checkpoint_every: int = field(default=10)
-    out_prefix: str = field(default="")
+    # out_prefix: str = field(default="")
     # plot_every: int = field(default=10)
-    eval_every: int = field(default=1)
-    eval_type: str = field(default="both")
+    # eval_every: int = field(default=1)
+    # eval_type: str = field(default="both")
     mode: str = field(default="federated")
+    
     # flower: Optional[FlowerConfig]
-    flwr_resources: dict = field(default_factory=default_resources)
+    # flwr_resources: dict = field(default_factory=default_resources)
 
     def __post_init__(self):
         assert self.mode in [
@@ -135,9 +151,60 @@ class SimConfig:
             "centralized",
             "flower",
         ], f"Unknown simulator mode: {self.mode}"
-        assert (
-            self.use_tensorboard or self.use_wandb or self.save_csv
-        ), f"Select any one logging method atleast to avoid losing results"
+        assert self.device in [
+            "auto",
+            "cuda",
+            "cpu",
+            "mps",
+        ], f"Unknown device : {self.device}"
+
+        gpu_ids = []
+        if self.device == "auto":
+            if cuda.is_available():
+                # Set visible GPUs
+                # TODO: MAke the gpu configurable
+                gpu_ids = get_free_gpus()
+                # logger.info('Selected GPUs:')
+                logger.info("Selected GPUs:" + ",".join(map(str, gpu_ids)))
+
+                # Disabling below line due to cluster policies
+                # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, gpu_ids))
+
+                if cuda.device_count() > 1:
+                    self.device = f"cuda:{get_free_gpu()}"
+                else:
+                    self.device = "cuda"
+
+            elif mps.is_available():
+                self.device = "mps"
+            else:
+                self.device = "cpu"
+            logger.info(f"Auto Configured device to: {self.device}")
+        else:
+            self.device = self.device
+        
+        if self.mode == "flower":
+        # if True:
+            # num_cpus = psutil.cpu_count()
+            num_free_cpus = 0
+            cpu_usage = psutil.cpu_percent(interval=1.0, percpu=True)
+            for cpu in cpu_usage:
+                # If the CPU usage is less than 60%, consider it as free
+                if cpu < 60:
+                    num_free_cpus += 1
+            cpus_per_client = max(1, int(num_free_cpus/self.num_clients))
+            logger.info(f"Number of CPUs per client: {cpus_per_client}")
+
+            if self.device == "mps" or self.device == "cpu":
+                # GPU support in flower for MPS is not available
+                self.flwr_resources = {"num_cpus": cpus_per_client, "num_gpus": 0}
+            else:
+                num_gpus = len(gpu_ids)
+                gpu_per_client = num_gpus/self.num_clients
+                self.flwr_resources = {"num_cpus": cpus_per_client, "num_gpus": gpu_per_client}
+        # assert (
+        #     self.use_tensorboard or self.use_wandb or self.save_csv
+        # ), f"Select any one logging method atleast to avoid losing results"
 
 
 @dataclass
@@ -168,15 +235,13 @@ class ServerConfig:
 @dataclass
 class TrainConfig:
     epochs: int = field()
-    device: str = field()
     batch_size: int = field()
     eval_batch_size: int = field()
     optimizer: dict = field()
     loss_name: str = field()
-    # lr: float = field()  # Client LR is optional
     lr_scheduler: Optional[dict] = field()
-    # lr_decay: Optional[float] = field()
     metric_cfg: MetricConfig = field()
+    device: Optional[str] = field(default=None)
 
     def __post_init__(self):
         self.optim_partial: partial[Optimizer] = partial_initialize_module(OPTIMIZER_MAP, self.optimizer, ignore_args=["params"])
@@ -185,25 +250,7 @@ class TrainConfig:
         self.loss_fn: Module = LOSS_MAP[self.loss_name]()
 
         assert self.batch_size >= 1
-        if self.device == "auto":
-            if cuda.is_available():
-                # Set visible GPUs
-                # TODO: MAke the gpu configurable
-                gpu_ids = get_free_gpus()
-                # logger.info('Selected GPUs:')
-                logger.info("Selected GPUs:" + ",".join(map(str, gpu_ids)))
-                os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, gpu_ids))
-
-                if cuda.device_count() > 1:
-                    self.device = f"cuda:{get_free_gpu()}"
-                else:
-                    self.device = "cuda"
-
-            elif mps.is_available():
-                self.device = "mps"
-            else:
-                self.device = "cpu"
-            logger.info(f"Auto Configured device to: {self.device}")
+       
 
 ########## Dataset configurataions ##########
 
@@ -251,7 +298,7 @@ class DatasetConfig:
 @dataclass
 class ModelConfig:
     name: str
-    hidden_size: int
+    hidden_channels: int
 
 
 @dataclass

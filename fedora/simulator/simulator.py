@@ -23,7 +23,7 @@ from fedora.client.abcclient import simple_evaluator, simple_trainer
 from fedora.client.baseclient import BaseFlowerClient
 
 from fedora.dataloader import load_federated_dataset
-from fedora.config.masterconf import Config, SimConfig
+from fedora.config.masterconf import Config, SimConfig, ResultConfig
 from fedora.utils import log_tqdm, log_instance, generate_client_ids, get_time
 
 from fedora.models.model import init_model
@@ -108,7 +108,7 @@ class Simulator:
         )
 
         # NOTE: cfg object conversion to asdict breaks when init fields are not set
-        if self.sim_cfg.use_wandb:
+        if self.cfg.result.use_wandb:
             wandb.init(
                 project="fedora",
                 job_type=cfg.mode,

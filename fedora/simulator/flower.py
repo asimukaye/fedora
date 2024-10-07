@@ -48,7 +48,7 @@ def run_flower_simulation(
         cfg.client.train_cfg.device = "cpu"
         cfg.server.train_cfg.device = "cpu"
 
-    result_manager = ResultManager(cfg.simulator, logger=logger)
+    result_manager = ResultManager(cfg.result, logger=logger)
 
     # strategy = instantiate(cfg.strategy, model=model, res_man=result_manager)
     strategy = cfg.strategy_partial(model=model, res_man=result_manager)

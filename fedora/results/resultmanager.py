@@ -19,7 +19,7 @@ from wandb import plot as wandb_plot
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from fedora.config.commonconf import SimConfig
+from fedora.config.commonconf import ResultConfig
 import fedora.customtypes as fT
 from fedora.utils import get_time
 
@@ -113,7 +113,7 @@ class ResultManager:
     # TODO: Migrate to metric event actor dictionaries everywhere
     # TODO: Evolve into a singleton class for evaluation purposes.
 
-    def __init__(self, cfg: SimConfig, logger: Logger) -> None:
+    def __init__(self, cfg: ResultConfig, logger: Logger) -> None:
         # Event actor metric form dictionaries
         self.result_dict = defaultdict()
         self.last_result = defaultdict()

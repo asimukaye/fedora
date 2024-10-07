@@ -63,7 +63,7 @@ def flatten_dict(nested: dict) -> dict:
     return pd.json_normalize(nested, sep=".").to_dict("records")[0]
 
 
-# Flower conversion adapters
+# Flower conversion adapters functions
 
 
 def flower_metrics_to_results(flwr_res: FitRes | EvaluateRes) -> fT.Result:
@@ -149,7 +149,7 @@ class BaseFlowerServer(ABCServer, fl_strat.Strategy):
             self.result_manager = result_manager
 
         self.param_keys = list(self.model.state_dict().keys())
-        defaults = dict(lr=train_cfg.optimizer['lr'])
+        defaults = dict(lr=train_cfg.optimizer["lr"])
         self._optimizer = torch.optim.Optimizer(
             self.model.parameters(), defaults=defaults
         )
@@ -159,14 +159,16 @@ class BaseFlowerServer(ABCServer, fl_strat.Strategy):
         self.lr_scheduler: LRScheduler = lrs_partial(self._optimizer)
 
     @classmethod
-    def broadcast_model(
+    def send_model_to_client(
         cls,
         client_ins: fT.ClientIns,
         client: BaseFlowerClient,
         request_type: fT.RequestType,
         _round=-1,
     ) -> fT.RequestOutcome:
-        # NOTE: Consider setting keep vars to true later if gradients are required
+        ''' Send the model to the client and get the outcome of the request'''
+        # It calls the clients download function directly. 
+        # In real world, the server should not have access to the client's download function. This should instead be a network call to the client
         client_ins.request = request_type
         client_ins._round = _round
         out = client.download(client_ins)
@@ -193,7 +195,7 @@ class BaseFlowerServer(ABCServer, fl_strat.Strategy):
         results = {}
 
         for idx in log_tqdm(ids, desc=f"broadcasting models: ", logger=logger):
-            results[idx] = self.broadcast_model(
+            results[idx] = self.send_model_to_client(
                 clients_ins[idx], self.clients[idx], request_type, self._round
             )
 
@@ -313,6 +315,15 @@ class BaseFlowerServer(ABCServer, fl_strat.Strategy):
         return collect_ids
 
     # FLOWER FUNCTION OVERLOADS
+
+
+    # MAPPING FLOWER STRATEGY FUNCTIONS TO SERVER STRATEGY FUNCTIONS
+
+    # _broadcast_models + update -> configure_fit
+    # _collect_results + update -> aggregate_fit
+    # _broadcast_models + local_eval -> configure_evaluate
+    # _collect_results + local_eval -> aggregate_evaluate
+    # server_eval -> evaluate
 
     # NOTE: The following functions are overloads of the flwr server strategy functions
     # The functions are overloaded to provide a more customized and flexible interface to the server

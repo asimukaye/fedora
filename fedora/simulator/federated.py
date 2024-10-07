@@ -73,7 +73,7 @@ def run_federated_simulation(
 
     clients: dict[str, BaseFlowerClient] = dict()
 
-    result_manager = ResultManager(cfg.simulator, logger=logger)
+    result_manager = ResultManager(cfg.result, logger=logger)
 
     strategy = cfg.strategy_partial(model=model_instance, res_man=result_manager)
 
@@ -115,7 +115,7 @@ def run_federated_simulation(
         update_ids = server.update(all_client_ids)
 
         ## evaluate on clients not sampled (for measuring generalization performance)
-        if curr_round % cfg.simulator.eval_every == 0:
+        if curr_round % cfg.server.cfg.eval_every == 0:
             # Can have specific evaluations later
             eval_ids = all_client_ids
             server.server_eval()
@@ -154,7 +154,7 @@ def run_standalone_simulation(
     )
     # client_datasets = get_client_datasets(cfg.dataset.split_conf, train_set, test_set, match_train_distribution=False)
 
-    result_manager = ResultManager(cfg.simulator, logger=logger)
+    result_manager = ResultManager(cfg.result, logger=logger)
     metric_manager = MetricManager(cfg.train_cfg.metric_cfg, 0, actor="simulator")
 
     base_client_cfg = ClientSchema(
@@ -241,7 +241,7 @@ def run_single_client(
  
     logger.info(f"[DATA_SPLIT] Simulated dataset split : `{cfg.split.name}`")
 
-    result_manager = ResultManager(cfg.simulator, logger=logger)
+    result_manager = ResultManager(cfg.result, logger=logger)
 
     for curr_round in range(cfg.simulator.num_rounds):
         logger.info(f"-------- Round: {curr_round} --------\n")

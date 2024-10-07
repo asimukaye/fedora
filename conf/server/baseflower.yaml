@@ -4,6 +4,6 @@ defaults:
 
 name: baseflower
 cfg:
-  eval_every: ${simulator.eval_every}
-  eval_type: ${simulator.eval_type}
+  eval_every: 1
+  eval_type: both
 train_cfg: ${train_cfg}

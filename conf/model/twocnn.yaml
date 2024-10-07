@@ -1,2 +1,2 @@
 name: twocnn
-hidden_size: 200
+hidden_channels: 200

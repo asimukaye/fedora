@@ -9,6 +9,7 @@ from dataclasses import asdict
 from .twocnn import TwoCNN
 from .twonn import TwoNN
 from .resnet import ResNet18, ResNet34
+from .fednet import FedNet
 
 from fedora.config.commonconf import ModelConfig, ModelInitConfig, initialize_module
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 MODEL_MAP = {
     "twocnn": TwoCNN,
     "twonn": TwoNN,
+    "fednet": FedNet,
     "resnet18": ResNet18,
     "resnet34": ResNet34
 }

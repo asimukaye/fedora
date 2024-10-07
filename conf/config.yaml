@@ -1,9 +1,9 @@
 %YAML 1.2
 ---
-# mode: fedavg
+mode: fedavg
 # mode: centralized
-mode: debug
-desc: "FedAvg run with twocnn model and cifar10 dataset, patho 3, 50 rounds, 4 epochs"
+# mode: debug
+desc: "FedAvg run with twocnn model and cifar10 dataset, iid, 500 rounds, 1 epoch"
 # desc: "Centralized training w epochs and rounds interchanged. sanity check"
 
 
@@ -21,7 +21,7 @@ defaults:
   # - client: fedgradstd
   - client: baseflower
   - dataset: cifar10
-  - split: noisylabel
+  - split: iid
 
   # - dataset: bloodmnist
   # - dataset: fedisic
@@ -34,27 +34,32 @@ simulator:
   # Simulator Mode: Takes arguments 'federated', 'standalone' or 'centralized', 'flower'
   # mode: standalone
   # mode: centralized
+  device: auto
   mode: federated
   # mode: flower 
   seed: 42
+  # use_tensorboard: false
+  # use_wandb: true
+  # save_csv: true
+  # out_prefix: ''
+  num_clients: 6
+  num_rounds: 500
+  checkpoint_every: 10
+  # eval_type: both
+  # eval_every: 1
+  # flwr_resources:
+  #   num_cpus: 2
+  #   num_gpus: 0.5 #TODO: Couple this with device init
+
+result:
   use_tensorboard: false
   use_wandb: true
   save_csv: true
-  out_prefix: ''
-  num_clients: 6
-  num_rounds: 50
-  checkpoint_every: 10
-  eval_type: both
-  eval_every: 1
-  flwr_resources:
-    num_cpus: 2
-    num_gpus: 0.5 #TODO: Couple this with device init
-
+  # out_prefix: ''
 
 
 train_cfg:
-  epochs: 4
-  device: auto
+  epochs: 1
   batch_size: 128
   eval_batch_size: 128
   optimizer:

@@ -41,7 +41,7 @@ def run_centralized_simulation(
         dataset=server_dataset, batch_size=cfg.train_cfg.eval_batch_size, shuffle=False
     )
 
-    result_manager = ResultManager(cfg.simulator, logger=logger)
+    result_manager = ResultManager(cfg.result, logger=logger)
     metric_manager = MetricManager(cfg.train_cfg.metric_cfg, 0, actor="simulator")
 
     # keeping the same amount of training duration as federated:

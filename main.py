@@ -20,7 +20,7 @@ def run_fedora(cfg: Config):
     cfg_obj: Config = OmegaConf.to_object(cfg)  # type: ignore
 
 
-    logger.info((OmegaConf.to_yaml(cfg)))
+    logger.info((OmegaConf.to_yaml(cfg_obj)))
     if cfg_obj.mode != "debug":
         input("Review Config. Press Enter to continue...")
     # logger.debug(cfg_obj.split.__dict__)

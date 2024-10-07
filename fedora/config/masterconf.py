@@ -24,7 +24,7 @@ from fedora.strategy.cgsv import CgsvStrategy
 # from fedora.utils import Range, get_free_gpus, arg_check, get_free_gpu
 from fedora.config.strategyconf import StrategyConfig, register_strategy_configs
 
-from fedora.config.commonconf import TrainConfig, ModelConfigGN, ModelInitConfig, DatasetConfig, SimConfig, default_resources, ModelConfig, ServerConfig, initialize_module, partial_initialize_module
+from fedora.config.commonconf import TrainConfig, ModelConfigGN, ModelInitConfig, DatasetConfig, SimConfig, default_resources, ModelConfig, ServerConfig, initialize_module, partial_initialize_module, ResultConfig
 from fedora.config.clientconf import ClientConfig, register_client_configs
 from fedora.config.splitconf import SplitConfig, register_split_configs
 logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ class Config:
     strategy: StrategySchema = field()
     client: ClientSchema = field()
     train_cfg: TrainConfig = field()
-
+    result: ResultConfig = field()
     dataset: DatasetConfig = field()
     split: SplitConfig = field()
     model: ModelConfig = field()
@@ -121,9 +121,14 @@ class Config:
                     self.split.num_splits == self.simulator.num_clients
                 ), "Number of clients in dataset and simulator should be equal"
 
-        if self.train_cfg.device == "mps" or self.train_cfg.device == "cpu":
-            # GPU support in flower for MPS is not available
-            self.simulator.flwr_resources = default_resources()
+        if self.train_cfg.device is None:
+            self.train_cfg.device = self.simulator.device
+            self.server.train_cfg.device = self.simulator.device
+            self.client.train_cfg.device = self.simulator.device
+        
+        # if self.train_cfg.device == "mps" or self.train_cfg.device == "cpu":
+        #     # GPU support in flower for MPS is not available
+        #     self.simulator.flwr_resources = default_resources()
 
         if self.mode == "debug":
             set_debug_mode(self)
@@ -133,11 +138,11 @@ class Config:
 def set_debug_mode(cfg: Config):
     """Debug mode overrides to the configuration object"""
     logger.root.setLevel(logging.DEBUG)
-    cfg.simulator.use_wandb = False
-    cfg.simulator.use_tensorboard = False
-    cfg.simulator.save_csv = True
+    cfg.result.use_wandb = False
+    cfg.result.use_tensorboard = False
+    cfg.result.save_csv = True
 
-    logger.debug(f"[Debug Override] Setting use_wandb to: {cfg.simulator.use_wandb}")
+    logger.debug(f"[Debug Override] Setting use_wandb to: {cfg.result.use_wandb}")
     cfg.simulator.num_rounds = 2
     logger.debug(f"[Debug Override] Setting rounds to: {cfg.simulator.num_rounds}")
     cfg.client.train_cfg.epochs = 1
@@ -175,6 +180,7 @@ def register_configs():
     cs.store(group="server", name="base_flower_server", node=ServerSchema)
     cs.store(group="strategy", name="strategy_schema", node=StrategySchema)
     cs.store(group="train_cfg", name="base_train", node=TrainConfig)
+    cs.store(group="result", name="base_result", node=ResultConfig)
    
 
     cs.store(group="model", name="resnet18gn", node=ModelConfigGN)

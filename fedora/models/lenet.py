@@ -1,7 +1,6 @@
 import torch
 
 
-
 class LeNet(torch.nn.Module):
     def __init__(self, in_channels, num_classes, hidden_size, dropout):
         super(LeNet, self).__init__()
