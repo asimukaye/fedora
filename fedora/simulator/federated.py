@@ -3,6 +3,7 @@ from copy import deepcopy
 import time
 from functools import partial
 from collections import defaultdict
+import torch
 from torch.nn import Module
 from torch.utils.data import Dataset, DataLoader, Subset
 # from hydra.utils import instantiate
@@ -10,8 +11,8 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from fedora.config.masterconf import Config, ClientSchema, get_client_partial
 from fedora.results.resultmanager import ResultManager
 from fedora.results.metricmanager import MetricManager
-from fedora.client.abcclient import simple_evaluator, simple_trainer
-from fedora.simulator.utils import make_checkpoint_dirs, parameter_average_aggregation
+from fedora.client.abcclient import simple_evaluator
+from fedora.simulator.utils import find_client_checkpoint, find_server_checkpoint, make_client_checkpoint_dirs, make_server_checkpoint_dirs, parameter_average_aggregation
 from fedora.client.baseclient import BaseFlowerClient
 from fedora.server.baseserver import BaseFlowerServer
 from fedora.utils import generate_client_ids, log_tqdm
@@ -19,18 +20,6 @@ from fedora.utils import generate_client_ids, log_tqdm
 import fedora.customtypes as fT
 
 logger = logging.getLogger(__name__)
-
-# def _create_client(
-#     cid: str, datasets: fT.DatasetPair_t, model: Module, client_cfg: ClientSchema
-# ) -> BaseFlowerClient:
-
-#     client_partial: partial = instantiate(client_cfg)
-#     # NOTE:IMPORTANT Sharing models without deepcopy could potentially have same references to parameters
-#     # Always deepcopy the model
-#     client: BaseFlowerClient = client_partial(
-#         client_id=cid, dataset=datasets, model=deepcopy(model)
-#     )
-#     return client
 
 
 def create_clients(
@@ -69,7 +58,6 @@ def run_federated_simulation(
     """
 
     all_client_ids = generate_client_ids(cfg.simulator.num_clients)
-    make_checkpoint_dirs(has_server=True, client_ids=all_client_ids)
 
     clients: dict[str, BaseFlowerClient] = dict()
 
@@ -97,7 +85,17 @@ def run_federated_simulation(
         result_manager=result_manager,
     )
 
-    _round = 0
+    if cfg.resumed:
+        server_ckpt = find_server_checkpoint()
+        client_ckpts = {cid: find_client_checkpoint(cid) for cid in all_client_ids}
+        server.load_checkpoint(server_ckpt)
+        _round = server._round
+        for cid, client in clients.items():
+            client.load_checkpoint(client_ckpts[cid])
+    else:
+        make_server_checkpoint_dirs()
+        make_client_checkpoint_dirs(client_ids=all_client_ids)
+        _round = 0
     # clients = _create_clients(client_datasets)
     # server.initialize(clients, )
 
@@ -121,8 +119,10 @@ def run_federated_simulation(
             server.server_eval()
             eval_ids = server.local_eval(all_client_ids)
 
-        # if curr_round % sim_cfg.checkpoint_every == 0:
-        #     save_checkpoints()
+        if curr_round % cfg.simulator.checkpoint_every == 0:
+            server.save_checkpoint()
+            for client in clients.values():
+                client.save_checkpoint()
 
         # This is weird, needs some rearch
         result_manager.flush_and_update_round(curr_round)
@@ -148,7 +148,8 @@ def run_standalone_simulation(
     # Clients get the splits of the train set with an inbuilt test set
     all_client_ids = generate_client_ids(cfg.simulator.num_clients)
 
-    make_checkpoint_dirs(has_server=False, client_ids=all_client_ids)
+
+
     test_loader = DataLoader(
         dataset=server_dataset, batch_size=cfg.train_cfg.eval_batch_size, shuffle=False
     )
@@ -166,12 +167,21 @@ def run_standalone_simulation(
     client_partial = get_client_partial(base_client_cfg)
     clients = create_clients(all_client_ids, client_datasets, model, client_partial)
 
+    if cfg.resumed:
+        client_ckpts = {cid: find_client_checkpoint(cid) for cid in all_client_ids}
+        for cid, client in clients.items():
+            client.load_checkpoint(client_ckpts[cid])
+        _round = client._round
+        result_manager._round = _round
+    else:
+        make_client_checkpoint_dirs(client_ids=all_client_ids)
+        _round = 0
+
     # central_train_cfg = instantiate(cfg.train_cfg)
     # central_train_cfg = partial_inig(cfg.train_cfg)
 
     client_params = {cid: client.model.state_dict() for cid, client in clients.items()}
 
-    _round = 0
     for curr_round in range(_round, cfg.simulator.num_rounds):
         train_result = {}
         eval_result = {}
@@ -199,7 +209,10 @@ def run_standalone_simulation(
 
             outcome = client.download(eval_ins)
             eval_result[cid] = client.upload(fT.RequestType.EVAL).result
+            if curr_round % cfg.simulator.checkpoint_every == 0:
+                client.save_checkpoint(epoch=curr_round)
 
+        # Sample a
         aggregate_params = parameter_average_aggregation(client_params)
         central_model.load_state_dict(aggregate_params)
         central_eval = simple_evaluator(
@@ -209,8 +222,7 @@ def run_standalone_simulation(
         result_manager.log_general_result(
             central_eval, phase="post_train", actor="sim", event="central_eval"
         )
-        # if curr_round % sim_cfg.checkpoint_every == 0:
-        #     save_checkpoints()
+
 
         result_manager.log_clients_result(
             train_result, phase="post_train", event="local_train"
@@ -219,6 +231,10 @@ def run_standalone_simulation(
             eval_result, phase="post_train", event="local_eval"
         )
 
+        if curr_round % cfg.simulator.checkpoint_every == 0:
+           # FIXME: Add step count and round logic to the checkpointing system
+           torch.save(central_model.state_dict(), f"central_model_{curr_round}.pth")
+        
         result_manager.flush_and_update_round(curr_round)
 
     final_result = result_manager.finalize()
@@ -235,7 +251,7 @@ def run_single_client(
     # Reusing clients dictionary to repurpose existing code
     clients: dict[str, BaseFlowerClient] = defaultdict()
 
-    make_checkpoint_dirs(has_server=False, client_ids=["single_client"])
+    make_client_checkpoint_dirs(client_ids=["single_client"])
 
     # Modify the dataset here:
  

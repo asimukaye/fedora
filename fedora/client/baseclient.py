@@ -143,18 +143,10 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
         dataset: fT.DatasetPair_t,
         model: Module,
     ):
-        # ic(train_cfg)
-
         # NOTE: the client object for Flower uses its own tmp directory. May cause side effects
         self._cid = client_id
         self._model: Module = model
         self._init_state_dict: OrderedDict = OrderedDict(model.state_dict())
-
-        # FIXME: Stateful clients will not work with multiprocessing
-        self._round = int(0)
-        self._epoch = int(0)
-        self._start_epoch = cfg.start_epoch
-        self._is_resumed = False
 
         # NOTE: IMPORTANT: Make sure to deepcopy the config in every child class
         self.cfg = deepcopy(cfg)
@@ -162,12 +154,6 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
 
         self.training_set = dataset[0]
         self.test_set = dataset[1]
-
-        self.metric_mngr = MetricManager(
-            self.train_cfg.metric_cfg, self._round, actor=self._cid
-        )
-
-        # self.optim_partial: functools.partial = self.train_cfg.optimizer  # type: ignore
 
         self.loss_fn = self.train_cfg.loss_fn
 
@@ -179,6 +165,18 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
 
         self._train_result = fT.Result(actor=client_id)
         self._eval_result = fT.Result(actor=client_id)
+
+        # CLIENT STATE VARIABLES
+        # FIXME: Reduce client state dependencies and replace with external state management
+        self._round = int(0)
+        self._epoch = int(0)
+        # TODO: Fix the logic for loading checkpoints with resume epoch
+        self._start_epoch = cfg.start_epoch
+        self._is_resumed = False
+
+        self.metric_mngr = MetricManager(
+            self.train_cfg.metric_cfg, self._round, actor=self._cid
+        )
 
     @property
     def id(self) -> str:
@@ -193,7 +191,7 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
         self._model = model
 
     def set_lr(self, lr: float) -> None:
-        self.train_cfg.optimizer['lr'] = lr
+        self.train_cfg.optimizer["lr"] = lr
 
     # @property
     # def round(self)-> int:
@@ -281,14 +279,15 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
     def train(self, train_ins: ClientInProtocol) -> fT.Result:
         # Run a round on the client
         # logger.info(f'CLIENT {self.id} Starting update')
-        # print('############# CWD: ##########', os.getcwd())
         self._model.load_state_dict(train_ins.in_params)
         self._optimizer = self.train_cfg.optim_partial(self._model.parameters())
         self.metric_mngr._round = self._round
         self._model.train()
         self._model.to(self.train_cfg.device)
 
+        # TODO: Fix the logic for loading checkpoints with resume epoch
         resume_epoch = 0
+
         out_result = fT.Result()
         # iterate over epochs and then on the batches
         for epoch in log_tqdm(
@@ -305,12 +304,11 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
                 # ic(inputs.shape)
                 outputs: Tensor = self._model(inputs)
                 # ic(targets.shape, outputs.shape)
-                loss: Tensor = self.loss_fn(outputs, targets) 
+                loss: Tensor = self.loss_fn(outputs, targets)
 
                 loss.backward()
 
                 self._optimizer.step()
-                # ic(loss.item())
 
                 # accumulate metrics
                 self.metric_mngr.track(loss.item(), outputs, targets)
@@ -318,8 +316,8 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
                 # TODO: Current implementation has out result rewritten for every epoch. Fix to pass intermediate results.
                 out_result = self.metric_mngr.aggregate(len(self.training_set), epoch)
                 self.metric_mngr.flush()
-            if epoch + 1 % 10 == 0:
-                self.save_checkpoint(epoch)
+            if (epoch + 1) % 10 == 0:
+                self.save_checkpoint(epoch, root_dir=self.train_cfg.metric_cfg.cwd)
             self._epoch = epoch
 
         # Helper code to retain the epochs if train is called without subsequent download calls
@@ -336,7 +334,7 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
         )
         return self._eval_result
 
-    def save_checkpoint(self, epoch=0):
+    def save_checkpoint(self, epoch=0, root_dir="."):
 
         torch.save(
             {
@@ -345,12 +343,12 @@ class BaseFlowerClient(ABCClient, fl.client.Client):
                 "model_state_dict": self._model.state_dict(),
                 "optimizer_state_dict": self._optimizer.state_dict(),
             },
-            f"client_ckpts/{self._cid}/ckpt_r{self._round:003}_e{epoch:003}.pt",
+            f"{root_dir}/client_ckpts/{self._cid}/ckpt_r{self._round:003}_e{epoch:003}.pt",
         )
 
     def load_checkpoint(self, ckpt_path: str):
-        # TODO: Fix the logic for loading checkpoints
         checkpoint = torch.load(ckpt_path)
+        # TODO: Fix the logic for loading checkpoints with resume epoch
         self._start_epoch = checkpoint["epoch"]
         self._model.load_state_dict(checkpoint["model_state_dict"])
         self._optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

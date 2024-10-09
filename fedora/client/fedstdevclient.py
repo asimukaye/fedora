@@ -12,7 +12,7 @@ from torch import Generator, tensor, Tensor
 from torch.nn import Module, Parameter
 from torch.optim import Optimizer
 import torch
-from .baseclient import  BaseFlowerClient, MetricManager
+from .baseclient import BaseFlowerClient, MetricManager
 from fedora.strategy.fedstdev import FedstdevStrategy
 from fedora.config.clientconf import FedstdevClientConfig, ClientConfig
 from fedora.config.commonconf import TrainConfig
@@ -21,10 +21,19 @@ import fedora.customtypes as fT
 
 logger = logging.getLogger(__name__)
 
- # NOTE: Multithreading causes atleast 3x slowdown for 2 epoch case. DO not use until necessary
-def train_one_model(model:Module, dataloader: DataLoader, seed: int, cfg: TrainConfig, optim_partial, loss_fn, mm: MetricManager)->t.Tuple[int, Module,fT.Result]:
+
+# NOTE: Multithreading causes atleast 3x slowdown for 2 epoch case. DO not use until necessary
+def train_one_model(
+    model: Module,
+    dataloader: DataLoader,
+    seed: int,
+    cfg: TrainConfig,
+    loss_fn,
+    mm: MetricManager,
+) -> t.Tuple[int, Module, fT.Result]:
+    
     out_result = fT.Result()
-    optimizer: Optimizer = optim_partial(model.parameters())
+    optimizer = cfg.optim_partial(model.parameters())
     model.train()
     model.to(cfg.device)
     # iterate over epochs and then on the batches
@@ -42,19 +51,18 @@ def train_one_model(model:Module, dataloader: DataLoader, seed: int, cfg: TrainC
             # accumulate metrics
             mm.track(loss.item(), outputs, targets)
         else:
-            out_result = mm.aggregate(len(
-                list(dataloader.dataset)), _epoch)
+            out_result = mm.aggregate(len(list(dataloader.dataset)), _epoch)
             mm.flush()
     return (seed, model, out_result)
 
 
 def get_to_nearest_log2(num, quotient):
-    max_batch = num//quotient
+    max_batch = num // quotient
     exp = int(np.log2(max_batch))
     new_batch = 2**exp
-    while num//new_batch != quotient:
+    while num // new_batch != quotient:
         residue = max_batch - new_batch
-        new_batch = new_batch + 2**int(np.log2(residue))
+        new_batch = new_batch + 2 ** int(np.log2(residue))
     return new_batch
 
 
@@ -62,11 +70,12 @@ def get_to_nearest_log2(num, quotient):
 class ClientInProtocol(t.Protocol):
     in_params: dict
 
+
 @dataclass
 class ClientOuts:
     client_params: fT.ActorParams_t
     client_param_stds: fT.ActorParams_t
-    
+
 
 class FedstdevClient(BaseFlowerClient):
     # TODO: Fix the argument ordering structure
@@ -74,40 +83,52 @@ class FedstdevClient(BaseFlowerClient):
         super().__init__(cfg, **kwargs)
 
         self.cfg = deepcopy(cfg)
-        # self._root_dir = f'{self.cfg.metric_cfg.cwd}/temp_json'
-        # os.makedirs(self._root_dir, exist_ok=True)
 
         self.train = self.train_single_thread
 
         # Keep n iters consistent with the iid split
-        if cfg.n_iters -1 != len(self.training_set)//self.train_cfg.batch_size:
-            logger.debug(f'NITERS_BEFORE: {len(self.training_set)//self.train_cfg.batch_size +1}')
-            self.train_cfg.batch_size = get_to_nearest_log2(len(self.training_set), cfg.n_iters -1)
-            logger.debug(f'NITERS_AFTER: {len(self.training_set)//self.train_cfg.batch_size +1}')
+        if cfg.n_iters - 1 != len(self.training_set) // self.train_cfg.batch_size:
+            logger.debug(
+                f"NITERS_BEFORE: {len(self.training_set)//self.train_cfg.batch_size +1}"
+            )
+            self.train_cfg.batch_size = get_to_nearest_log2(
+                len(self.training_set), cfg.n_iters - 1
+            )
+            logger.debug(
+                f"NITERS_AFTER: {len(self.training_set)//self.train_cfg.batch_size +1}"
+            )
 
-        logger.debug(f'[BATCH SIZES:] CID: {self._cid}, batch size: {self.train_cfg.batch_size}')
+        logger.debug(
+            f"[BATCH SIZES:] CID: {self._cid}, batch size: {self.train_cfg.batch_size}"
+        )
 
-        self.train_loader_map = self._create_shuffled_loaders(self.training_set, cfg.seeds)
+        self.train_loader_map = self._create_shuffled_loaders(
+            self.training_set, cfg.seeds
+        )
         # self._model_map: dict[int, Module] = {}
         # Make m copies of the model for independent train iterations
-        self._model_map: dict[int, Module] = {seed: deepcopy(self._model) for seed in cfg.seeds}
-
+        self._model_map: dict[int, Module] = {
+            seed: deepcopy(self._model) for seed in cfg.seeds
+        }
 
         self._optimizer_map: dict[int, Optimizer] = {}
         for seed, model in self._model_map.items():
             self._optimizer_map[seed] = self.train_cfg.optim_partial(model.parameters())
 
-        self._param_std :fT.ActorParams_t  = self._model.state_dict()
-        self._grad_mu : fT.ActorDeltas_t = {p_key: torch.empty_like(param.data) for p_key, param in self._model.named_parameters()}
+        self._param_std: fT.ActorParams_t = self._model.state_dict()
+        self._grad_mu: fT.ActorDeltas_t = {
+            p_key: torch.empty_like(param.data)
+            for p_key, param in self._model.named_parameters()
+        }
 
         # self._empty_grads = deepcopy(self._grad_mu)
         # self._cum_gradients_map = {seed: deepcopy(self._empty_grads) for seed in self._model_map.keys()}
 
-        self._grad_std :dict[str, Tensor] = deepcopy(self._grad_mu)
+        self._grad_std: dict[str, Tensor] = deepcopy(self._grad_mu)
 
-
-
-    def _create_shuffled_loaders(self, dataset: Subset, seeds:list[int]) -> dict[int, DataLoader]:
+    def _create_shuffled_loaders(
+        self, dataset: Subset, seeds: list[int]
+    ) -> dict[int, DataLoader]:
         loader_dict = {}
         self._generator = {}
 
@@ -117,35 +138,35 @@ class FedstdevClient(BaseFlowerClient):
             gen.manual_seed(seed)
             sampler = RandomSampler(data_source=dataset, generator=gen)
             self._generator[seed] = gen
-            loader_dict[seed] = DataLoader(dataset=dataset, sampler=sampler, batch_size=self.train_cfg.batch_size)
+            loader_dict[seed] = DataLoader(
+                dataset=dataset, sampler=sampler, batch_size=self.train_cfg.batch_size
+            )
             # for i, (inputs, targets) in enumerate(loader_dict[seed]):
             #     with open(f'{self._root_dir}/{self.cfg.metric_cfg.file_prefix}_targets_pre_{self._round}_{seed}_{i}.json', 'w') as f:
             #                 json.dump(targets.tolist(), f)
 
-
         return loader_dict
-    
+
     def unpack_train_input(self, client_ins: fT.ClientIns) -> ClientInProtocol:
         specific_ins = FedstdevStrategy.client_receive_strategy(client_ins)
         return specific_ins
-    
+
     def pack_train_result(self, result: fT.Result) -> fT.ClientResult:
-        self._model.to('cpu')
+        self._model.to("cpu")
         client_outs = ClientOuts(
-                    client_params=self._model.state_dict(),
-                    client_param_stds=self._get_parameter_std_dev()
-                )
+            client_params=self._model.state_dict(),
+            client_param_stds=self._get_parameter_std_dev(),
+        )
         specific_res = FedstdevStrategy.client_send_strategy(client_outs, result=result)
         return specific_res
- 
 
-    def _get_parameter_std_dev(self)->dict[str, Parameter]:
+    def _get_parameter_std_dev(self) -> dict[str, Parameter]:
         return deepcopy(self._param_std)
-    
-    def _get_gradients_std_dev(self)->dict[str, Tensor]:
+
+    def _get_gradients_std_dev(self) -> dict[str, Tensor]:
         return deepcopy(self._grad_std)
-    
-    def _get_gradients_average(self)->dict[str, Tensor]:
+
+    def _get_gradients_average(self) -> dict[str, Tensor]:
         return deepcopy(self._grad_mu)
 
     def _compute_average_model_and_std(self, model_map: dict[int, Module]):
@@ -160,7 +181,6 @@ class FedstdevClient(BaseFlowerClient):
                 # tmp_grad_list.append(individual_param.grad)
                 # tmp_grad_list.append(self._cum_gradients_map[seed][name])
 
-
             stacked = torch.stack(tmp_param_list)
 
             std_, mean_ = torch.std_mean(stacked, dim=0)
@@ -173,10 +193,9 @@ class FedstdevClient(BaseFlowerClient):
             # param.grad = mean_grad_.data
 
             # STATEFUL FUNCTIONS MAY NOT WORK WITH MULTITHREADING
-            self._param_std[name].data = std_.to('cpu')
+            self._param_std[name].data = std_.to("cpu")
             # self._grad_mu[name] = mean_grad_.to('cpu')
             # self._grad_std[name] = std_grad_.to('cpu')
-
 
     def aggregate_seed_results(self, seed_results: dict[int, fT.Result]) -> fT.Result:
         # TODO: Consider merging this with the above function
@@ -189,16 +208,26 @@ class FedstdevClient(BaseFlowerClient):
 
         for metric, val in avg_metrics.items():
             avg_metrics[metric] = val / len(seed_results)
-        
-        return fT.Result(metrics=avg_metrics, size=sample_res.size, metadata=sample_res.metadata,event=sample_res.event, phase=sample_res.phase, _round=self._round, actor=self._cid)
-    
+
+        return fT.Result(
+            metrics=avg_metrics,
+            size=sample_res.size,
+            metadata=sample_res.metadata,
+            event=sample_res.event,
+            phase=sample_res.phase,
+            _round=self._round,
+            actor=self._cid,
+        )
+
     def train_single_thread(self, train_ins: ClientInProtocol) -> fT.Result:
         # MAYBE THIS PART IS REDUNDANT
         self._model.load_state_dict(train_ins.in_params)
-        self._optimizer = self.optim_partial(self._model.parameters())
+        self._optimizer = self.train_cfg.optim_partial(self._model.parameters())
 
         # NOTE: It is important to reseed the generators here to ensure the tests pass across flower and non flower runs.
-        self.train_loader_map = self._create_shuffled_loaders(self.training_set, self.cfg.seeds)
+        self.train_loader_map = self._create_shuffled_loaders(
+            self.training_set, self.cfg.seeds
+        )
         for seed, model in self._model_map.items():
             model.load_state_dict(train_ins.in_params)
             self._optimizer_map[seed] = self.train_cfg.optim_partial(model.parameters())
@@ -216,11 +245,10 @@ class FedstdevClient(BaseFlowerClient):
         # out_result= fT.Result()
         out_result_dict: dict[int, fT.Result] = {}
 
-        for seed, model in self._model_map.items():  
+        for seed, model in self._model_map.items():
             # logger.info(f'SEED: {seed}, STATE: {self._generator[seed].get_state()}')
             # set optimizer parameters
-            # optimizer: Optimizer = self.optim_partial(model.parameters())
-            optimizer: Optimizer = self._optimizer_map[seed]
+            optimizer = self._optimizer_map[seed]
 
             model.train()
             model.to(self.train_cfg.device)
@@ -230,65 +258,84 @@ class FedstdevClient(BaseFlowerClient):
                     # with open(f'{self._root_dir}/{self.cfg.metric_cfg.file_prefix}_targets_{self._round}_{seed}_{i}.json', 'w') as f:
                     #     json.dump(targets.tolist(), f)
                     # logger.debug(f'CLIENT {self.id} SEED: {seed}, EPOCH: {epoch}, BATCH: {i}')
-                    inputs, targets = inputs.to(self.train_cfg.device), targets.to(self.train_cfg.device)
+                    inputs, targets = inputs.to(self.train_cfg.device), targets.to(
+                        self.train_cfg.device
+                    )
 
                     model.zero_grad(set_to_none=True)
 
                     outputs: Tensor = model(inputs)
-                    loss: Tensor = self.loss_fn(outputs, targets) # type: ignore
+                    loss: Tensor = self.loss_fn(outputs, targets)  # type: ignore
                     loss.backward()
                     optimizer.step()
                     # for p_key, param in model.named_parameters():
                     #     add_grad = 0 if param.grad is None else param.grad
                     #     self._cum_gradients_map[seed][p_key] = self._cum_gradients_map[seed].get(p_key, 0) + add_grad # type: ignore
-      
+
                     self.metric_mngr.track(loss.item(), outputs, targets)
                 else:
-                    out_result_dict[seed] = self.metric_mngr.aggregate(len(self.training_set), epoch)
+                    out_result_dict[seed] = self.metric_mngr.aggregate(
+                        len(self.training_set), epoch
+                    )
                     self.metric_mngr.flush()
 
                 self._epoch = epoch
 
         self._compute_average_model_and_std(self._model_map)
         out_result = self.aggregate_seed_results(out_result_dict)
- 
+
         self._start_epoch = self._epoch + 1
 
-        logger.info(f'CLIENT {self.id} Completed update')
+        logger.info(f"CLIENT {self.id} Completed update")
 
         for seed, out_result in out_result_dict.items():
-            self.metric_mngr.log_general_metric(out_result.metrics['loss'], 'train_loss', f'seed_{seed}', 'pre_avg')
-            self.metric_mngr.log_general_metric(out_result.metrics['acc1'], 'train_acc', f'seed_{seed}', 'pre_avg')
-        
+            self.metric_mngr.log_general_metric(
+                out_result.metrics["loss"], "train_loss", f"seed_{seed}", "pre_avg"
+            )
+            self.metric_mngr.log_general_metric(
+                out_result.metrics["acc1"], "train_acc", f"seed_{seed}", "pre_avg"
+            )
+
         # self.metric_mngr.json_dump(self._get_parameter_std_dev(), 'param_std', 'train', 'pre_avg')
         # self.metric_mngr.json_dump(self._parameters, 'grad_std', 'train', 'pre_avg')
-        
+
         return out_result
 
     def load_checkpoint(self, ckpt_path):
         super().load_checkpoint(ckpt_path)
         self._model_map = {seed: deepcopy(self._model) for seed in self.cfg.seeds}
 
-        self._optimizer_map = {seed: deepcopy(self._optimizer) for seed in self.cfg.seeds}
+        self._optimizer_map = {
+            seed: deepcopy(self._optimizer) for seed in self.cfg.seeds
+        }
 
-   
     def train_multi_thread(self):
         # Run an round on the client
-    
+
         self.metric_mngr._round = self._round
         self._model.train()
         self._model.to(self.train_cfg.device)
         out_result = fT.Result()
-        # for seed, model in self._model_map.items():   
+        # for seed, model in self._model_map.items():
         with ThreadPoolExecutor(max_workers=len(self._model_map)) as exec:
-            futures = {exec.submit(train_one_model, model, self.train_loader_map[seed], seed, self.train_cfg, self.train_cfg.optim_partial, self.loss_fn, deepcopy(self.metric_mngr)) for seed, model in self._model_map.items()}
+            futures = {
+                exec.submit(
+                    train_one_model,
+                    model,
+                    self.train_loader_map[seed],
+                    seed,
+                    self.train_cfg,
+                    self.train_cfg.optim_partial,
+                    self.loss_fn,
+                    deepcopy(self.metric_mngr),
+                )
+                for seed, model in self._model_map.items()
+            }
             for fut in as_completed(futures):
                 seed, model, out_result = fut.result()
                 self._model_map[seed] = model
-        
-        self._compute_average_model_and_std(self._model_map)
-        
 
-        logger.info(f'CLIENT {self.id} Completed update')
+        self._compute_average_model_and_std(self._model_map)
+
+        logger.info(f"CLIENT {self.id} Completed update")
         return out_result
- 

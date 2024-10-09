@@ -1,7 +1,5 @@
 import os
-import glob
 import typing as t
-from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from copy import deepcopy
 import time
@@ -9,26 +7,16 @@ import logging
 import random
 import numpy as np
 import torch
-from functools import partial
 import wandb
+import json
 from torch.nn import Module
 from torch.backends import cudnn, mps
 from torch.utils.data import DataLoader, Subset, ConcatDataset, Dataset
-# from hydra.utils import instantiate
-import flwr as fl
-
-# from fedora.server.baseserver import BaseServer
-from fedora.server.baseserver import BaseFlowerServer
-from fedora.client.abcclient import simple_evaluator, simple_trainer
-from fedora.client.baseclient import BaseFlowerClient
 
 from fedora.dataloader import load_federated_dataset
 from fedora.config.masterconf import Config, SimConfig, ResultConfig
-from fedora.utils import log_tqdm, log_instance, generate_client_ids, get_time
 
 from fedora.models.model import init_model
-from fedora.results.resultmanager import ResultManager
-from fedora.results.metricmanager import MetricManager
 import fedora.customtypes as fT
 
 from fedora.simulator.centralized import run_centralized_simulation
@@ -48,13 +36,11 @@ def set_seed(seed):
     cudnn.benchmark = False
     logger.info(f"[SEED] Simulator global seed is set to: {seed}!")
 
-
-def save_checkpoints(server: BaseFlowerServer, clients: dict[str, BaseFlowerClient]):
-    if server:
-        server.save_checkpoint()
-    if clients:
-        for client in clients.values():
-            client.save_checkpoint()
+def get_wandb_run_id(root_dir=".") -> str:
+    with open(root_dir + "/wandb/wandb-resume.json", 'r') as f:
+        wandb_json = json.load(f)
+    return wandb_json["run_id"]
+    
 
 
 def set_global_n_iters(cfg: Config, client_sets: fT.ClientDatasets_t):
@@ -102,19 +88,34 @@ class Simulator:
 
         logger.info(f"[NUM ROUNDS] : {self.sim_cfg.num_rounds}")
         set_seed(cfg.simulator.seed)
+        if cfg.resumed:
+            logger.info(f"------------ Resuming run: {os.getcwd()} ------------")
 
         self.client_sets, self.test_set, self.model_instance = init_dataset_and_model(
             cfg=cfg
         )
 
         # NOTE: cfg object conversion to asdict breaks when init fields are not set
+        
+        tags = [cfg.simulator.mode, cfg.strategy.name, cfg.model.name, cfg.dataset.name, cfg.split.name]
+
+
         if self.cfg.result.use_wandb:
+            if self.cfg.resumed:
+                run_id = get_wandb_run_id()
+                resume_mode = 'must'
+            else:
+                run_id = None
+                resume_mode = True
+                
             wandb.init(
                 project="fedora",
                 job_type=cfg.mode,
+                tags=tags,
                 config=asdict(cfg),
-                resume=True,
+                resume=resume_mode,
                 notes=cfg.desc,
+                id=run_id,
             )
 
         # Till here can be factorized
@@ -122,7 +123,6 @@ class Simulator:
         # TODO: consolidate checkpointing and resuming logic systematically
         self.is_resumed = False
 
-        # server_ckpt, client_ckpts = self.find_checkpoint()
 
         # # FIXME: need to fix resume logic
         # if self.is_resumed:

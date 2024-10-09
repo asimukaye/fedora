@@ -249,22 +249,24 @@ class BaseFlowerServer(ABCServer, fl_strat.Strategy):
         self._round = checkpoint["round"]
         # Find a way to avoid this result manager round bug repeatedly
         self.result_manager._round = checkpoint["round"]
+        self.result_manager._step_counter = checkpoint["step_count"]
 
         # loss = checkpoint['loss']
 
-    def save_checkpoint(self):
+    def save_checkpoint(self, root_dir = '.'):
         torch.save(
             {
                 "round": self._round,
+                "step_count" : self.result_manager._step_counter,
                 "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self._optimizer.state_dict(),
             },
-            f"server_ckpts/server_ckpt_{self._round:003}.pt",
+            f"{root_dir}/server_ckpts/server_ckpt_{self._round:003}.pt",
         )
 
-    def finalize(self) -> None:
+    def finalize(self, root_dir='.') -> None:
         # save checkpoint
-        torch.save(self.model.state_dict(), f"final_model.pt")
+        torch.save(self.model.state_dict(), f"{root_dir}/final_model.pt")
         # return all_results
 
     def update(self, avlble_cids: fT.ClientIds_t) -> fT.ClientIds_t:

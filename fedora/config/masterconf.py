@@ -1,9 +1,12 @@
 # Master config file to store config dataclasses and do validation
 from dataclasses import dataclass, field, asdict
 from functools import partial
-
+import os
+from typing import Optional
 
 from hydra.core.config_store import ConfigStore
+from hydra.core.hydra_config import HydraConfig
+
 import logging
 
 from fedora.client.baseclient import BaseFlowerClient
@@ -23,10 +26,23 @@ from fedora.strategy.cgsv import CgsvStrategy
 
 # from fedora.utils import Range, get_free_gpus, arg_check, get_free_gpu
 from fedora.config.strategyconf import StrategyConfig, register_strategy_configs
-
-from fedora.config.commonconf import TrainConfig, ModelConfigGN, ModelInitConfig, DatasetConfig, SimConfig, default_resources, ModelConfig, ServerConfig, initialize_module, partial_initialize_module, ResultConfig
+from fedora.config.commonconf import (
+    TrainConfig,
+    ModelConfigGN,
+    ModelInitConfig,
+    DatasetConfig,
+    SimConfig,
+    default_resources,
+    ModelConfig,
+    ServerConfig,
+    initialize_module,
+    partial_initialize_module,
+    ResultConfig,
+)
+from fedora.simulator.utils import checkpoint_dirs_exist
 from fedora.config.clientconf import ClientConfig, register_client_configs
 from fedora.config.splitconf import SplitConfig, register_split_configs
+
 logger = logging.getLogger(__name__)
 
 CLIENT_MAPS = {
@@ -59,7 +75,9 @@ class StrategySchema:
     name: str
     cfg: StrategyConfig
 
+
 ########## Client Configurations ##########
+
 
 @dataclass
 class ClientSchema:
@@ -75,14 +93,26 @@ class ServerSchema:
     cfg: ServerConfig
     train_cfg: TrainConfig
 
-def get_client_partial(client_schema: ClientSchema)->partial[BaseFlowerClient]:
-    return partial_initialize_module(CLIENT_MAPS, client_schema, ignore_args=["client_id", "model", "dataset"])
 
-def get_server_partial(server_schema: ServerSchema)->partial[BaseFlowerServer]:
-    return partial_initialize_module(SERVER_MAPS, server_schema, ignore_args=["clients", "model", "strategy", "dataset", "result_manager"])
+def get_client_partial(client_schema: ClientSchema) -> partial[BaseFlowerClient]:
+    return partial_initialize_module(
+        CLIENT_MAPS, client_schema, ignore_args=["client_id", "model", "dataset"]
+    )
 
-def get_strategy_partial(strategy_schema: StrategySchema)->partial[FedAvgStrategy]:
-    return partial_initialize_module(STRATEGY_MAPS, strategy_schema, ignore_args=["model", "res_man"])
+
+def get_server_partial(server_schema: ServerSchema) -> partial[BaseFlowerServer]:
+    return partial_initialize_module(
+        SERVER_MAPS,
+        server_schema,
+        ignore_args=["clients", "model", "strategy", "dataset", "result_manager"],
+    )
+
+
+def get_strategy_partial(strategy_schema: StrategySchema) -> partial[FedAvgStrategy]:
+    return partial_initialize_module(
+        STRATEGY_MAPS, strategy_schema, ignore_args=["model", "res_man"]
+    )
+
 
 ########## Master Configurations ######
 # ####
@@ -111,7 +141,7 @@ class Config:
         self.client_partial = get_client_partial(self.client)
 
         self.strategy_partial = get_strategy_partial(self.strategy)
-   
+
         if self.simulator.mode == "centralized":
             self.dataset.federated = False
             logger.info("Setting federated cfg in dataset cfg to False")
@@ -125,11 +155,20 @@ class Config:
             self.train_cfg.device = self.simulator.device
             self.server.train_cfg.device = self.simulator.device
             self.client.train_cfg.device = self.simulator.device
-        
+
         # if self.train_cfg.device == "mps" or self.train_cfg.device == "cpu":
         #     # GPU support in flower for MPS is not available
         #     self.simulator.flwr_resources = default_resources()
-
+        # NOTE: We need to fetch the output directory explicitly from hydra config due to a bug in hydra experimental rerun that does not change the current working directory to the output directory
+        # hydra_output_dir = HydraConfig.get().runtime.output_dir
+        self.resumed = checkpoint_dirs_exist()
+        # if self.resumed:
+        #     self.cwd = hydra_output_dir
+        #     self.train_cfg.metric_cfg.cwd = hydra_output_dir
+        #     self.server.train_cfg.metric_cfg.cwd = hydra_output_dir
+        #     self.client.train_cfg.metric_cfg.cwd = hydra_output_dir
+        # else:
+        #     self.cwd = os.getcwd()
         if self.mode == "debug":
             set_debug_mode(self)
 
@@ -163,7 +202,7 @@ def set_debug_mode(cfg: Config):
         f"[Debug Override] Setting num clients to: {cfg.simulator.num_clients}"
     )
 
-    cfg.dataset.subsample = True
+    # cfg.dataset.subsample = True
     cfg.dataset.subsample_fraction = 0.05
 
 
@@ -181,7 +220,6 @@ def register_configs():
     cs.store(group="strategy", name="strategy_schema", node=StrategySchema)
     cs.store(group="train_cfg", name="base_train", node=TrainConfig)
     cs.store(group="result", name="base_result", node=ResultConfig)
-   
 
     cs.store(group="model", name="resnet18gn", node=ModelConfigGN)
     cs.store(group="model", name="resnet34gn", node=ModelConfigGN)

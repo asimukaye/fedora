@@ -12,7 +12,8 @@ import flwr as fl
 
 from fedora.utils import generate_client_ids
 from fedora.config.masterconf import Config
-from fedora.simulator.utils import make_checkpoint_dirs
+from fedora.simulator.utils import find_client_checkpoint, find_server_checkpoint, make_client_checkpoint_dirs, make_server_checkpoint_dirs
+
 from fedora.results.resultmanager import ResultManager
 from fedora.client.baseclient import BaseFlowerClient
 from fedora.server.baseserver import BaseFlowerServer
@@ -28,8 +29,15 @@ def run_flower_simulation(
     model: Module,
 ):
 
-    # all_client_ids = generate_client_ids(cfg.simulator.num_clients)
-    # make_checkpoint_dirs(has_server=True, client_ids=all_client_ids)
+    # FIXME: Client IDS are no longer supported in flower, need to find a way to pass the client id to the checkpointing system
+    all_client_ids = generate_client_ids(cfg.simulator.num_clients)
+    if cfg.resumed:
+        server_ckpt = find_server_checkpoint()
+        client_ckpts = {cid: find_client_checkpoint(cid) for cid in all_client_ids}
+    else:
+        make_server_checkpoint_dirs()
+        make_client_checkpoint_dirs(client_ids=all_client_ids)
+
     clients: dict[str, BaseFlowerClient] = dict()
 
     # client_datasets_map = {}
@@ -95,6 +103,7 @@ def run_flower_simulation(
     # Flower simulation arguments
     # runtime_env = {"env_vars": {"CUDA_VISIBLE_DEVICES": ",".join(map(str, gpu_ids))}}
     runtime_env = {}
+    # Possibly breaks on resume
     runtime_env["working_dir"] = os.getcwd()
 
     fl.simulation.start_simulation(

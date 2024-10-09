@@ -459,7 +459,7 @@ class ResultManager:
         self, metric_val, metric_name: str, actor: str, phase: str, event: str = ""
     ):
         if is_dataclass(metric_val):
-            metric_val = asdict(metric_val) # type: ignore
+            metric_val = asdict(metric_val)  # type: ignore
         os.makedirs(f"debug/r_{self._round}", exist_ok=True)
         with open(
             f"debug/r_{self._round}/{metric_name}_{event}_{actor}_{phase}.json", "w"

@@ -44,6 +44,7 @@ def simple_trainer(model: Module,
                     dataloader: DataLoader,
                     cfg: TrainConfig,
                     mm: MetricManager,
+                    optimizer: Optimizer,
                     round: int) -> fT.Result:
 
     mm._round = round
@@ -51,8 +52,7 @@ def simple_trainer(model: Module,
     # model.float()
     model.to(cfg.device)
     # criterion  = cfg.criterion
-    optim_partial: functools.partial = cfg.optimizer #type: ignore
-    optimizer: Optimizer = optim_partial(model.parameters(), lr=cfg.lr)
+    # optimizer = cfg.optim_partial(model.parameters())
 
     for inputs, targets in tqdm(dataloader):
         optimizer.zero_grad()

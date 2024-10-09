@@ -14,6 +14,7 @@ from torch import cuda
 from fedora.utils import Range, get_free_gpus, arg_check, get_free_gpu
 from fedora.config.splitconf import SplitConfig
 from hydra.utils import to_absolute_path
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -202,6 +203,7 @@ class SimConfig:
                 num_gpus = len(gpu_ids)
                 gpu_per_client = num_gpus/self.num_clients
                 self.flwr_resources = {"num_cpus": cpus_per_client, "num_gpus": gpu_per_client}
+
         # assert (
         #     self.use_tensorboard or self.use_wandb or self.save_csv
         # ), f"Select any one logging method atleast to avoid losing results"
@@ -213,10 +215,11 @@ class MetricConfig:
     # fairness_metrics: list
     log_to_file: bool = False
     file_prefix: str = field(default="")
-    cwd: Optional[str] = field(default=None)
+
+    cwd: str = field(default_factory=os.getcwd)
 
     def __post_init__(self):
-        self.cwd = os.getcwd() if self.cwd is None else self.cwd
+        self.cwd = os.getcwd()
 
 ########## Server Configurations ##########
 @dataclass
@@ -285,13 +288,13 @@ class DatasetConfig:
     seed: Optional[int]
     federated: bool
     # split_conf: SplitConfig
-    subsample: bool = False
-    subsample_fraction: float = 0.0  # subsample the dataset with the given fraction
+    # subsample: bool = False
+    subsample_fraction: float = 1.0  # subsample the dataset with the given fraction
 
     def __post_init__(self):
         # assert self.test_fraction == Range(0.0, 1.0), f'Invalid value {self.test_fraction} for test fraction'
         self.data_path = to_absolute_path(self.data_path)
-
+        assert self.subsample_fraction == Range(0.0, 1.0), f"Invalid value {self.subsample_fraction} for subsample fraction"
 
 
 ########## Model Configurations ##########

@@ -1,9 +1,9 @@
 %YAML 1.2
 ---
-mode: fedavg
+# mode: fedavg
 # mode: centralized
-# mode: debug
-desc: "FedAvg run with twocnn model and cifar10 dataset, iid, 500 rounds, 1 epoch"
+mode: debug
+desc: "FedAvg run with fednet model and cifar10 dataset, iid, 500 rounds, 1 epoch, no resize"
 # desc: "Centralized training w epochs and rounds interchanged. sanity check"
 
 
@@ -27,7 +27,8 @@ defaults:
   # - dataset: fedisic
   # - model: resnet18gn
   # - model: resnet18
-  - model: twocnn
+  # - model: twocnn
+  - model: fednet
   - _self_
 
 simulator:
@@ -77,7 +78,7 @@ train_cfg:
 # CONFIG OVERRIDES
 
 dataset:
-  subsample: false
+  # subsample: false
   subsample_fraction: 1.0 # Fraction of the dataset to use. Only works when subsample is true
 
 model_init:

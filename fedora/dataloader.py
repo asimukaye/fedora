@@ -18,7 +18,6 @@ from fedora.config.commonconf import DatasetConfig, TransformsConfig, DatasetMod
 from fedora.config.splitconf import SplitConfig
 
 def get_train_transform(cfg: TransformsConfig):
-    # FIXME: work
     # tf_list =[]
     # #  
     # if cfg.resize:
@@ -55,7 +54,7 @@ def load_vision_dataset(cfg: DatasetConfig) -> tuple[data.Dataset, data.Dataset,
                     get_test_transform(cfg.transforms)]
     raw_train, raw_test, model_spec = fetch_torchvision_dataset(dataset_name=cfg.name, root=cfg.data_path, transforms= transforms)
 
-    if cfg.subsample:
+    if cfg.subsample_fraction < 1.0:
         get_subset = lambda set, fraction: data.Subset(set, np.random.randint(0, len(set)-1, int(fraction * len(set)))) # type: ignore
         
         raw_train = get_subset(raw_train, cfg.subsample_fraction)
@@ -76,9 +75,11 @@ def load_raw_dataset(cfg: DatasetConfig) -> tuple[data.Dataset, data.Dataset, Da
 
     Returns: raw_train, raw_test, model_spec
     """
-
-    transforms = [get_train_transform(cfg.transforms),
-                  get_test_transform(cfg.transforms)]
+    if cfg.transforms is None:
+        transforms = [tvt.ToTensor(), tvt.ToTensor()]
+    else:
+        transforms = [get_train_transform(cfg.transforms),
+                    get_test_transform(cfg.transforms)]
 
     match cfg.dataset_family:
         case 'torchvision':
@@ -98,7 +99,7 @@ def load_raw_dataset(cfg: DatasetConfig) -> tuple[data.Dataset, data.Dataset, Da
         case _:
             raise NotImplementedError()
 
-    if cfg.subsample:
+    if cfg.subsample_fraction < 1.0:
         get_subset = lambda set, fraction: data.Subset(set, np.random.randint(0, len(set)-1, int(fraction * len(set)))) # type: ignore
         
         raw_train = get_subset(raw_train, cfg.subsample_fraction)

@@ -49,9 +49,6 @@ class FedgradstdClient(BaseFlowerClient):
         super().__init__(cfg, **kwargs)
 
         self.cfg = deepcopy(cfg)
-        # self._root_dir = f'{self.cfg.metric_cfg.cwd}/temp_json'
-        # os.makedirs(self._root_dir, exist_ok=True)
-
         # Keep n iters consistent with the iid split
         if cfg.n_iters -1 != len(self.training_set)//self.train_cfg.batch_size:
             logger.debug(f'NITERS_BEFORE: {len(self.training_set)//self.train_cfg.batch_size +1}')
@@ -68,7 +65,7 @@ class FedgradstdClient(BaseFlowerClient):
 
         self._optimizer_map: dict[int, Optimizer] = {}
         for seed, model in self._model_map.items():
-            self._optimizer_map[seed] = self.optim_partial(model.parameters())
+            self._optimizer_map[seed] = self.train_cfg.optim_partial(model.parameters())
 
         # self._param_std :fT.ActorParams_t  = self._model.state_dict()
         self._grad_mu : fT.ActorDeltas_t = {p_key: torch.empty_like(param.data) for p_key, param in self._model.named_parameters()}
@@ -174,13 +171,13 @@ class FedgradstdClient(BaseFlowerClient):
     def train(self, train_ins: ClientInProtocol) -> fT.Result:
         # MAYBE THIS PART IS REDUNDANT
         self._model.load_state_dict(train_ins.in_params)
-        self._optimizer = self.optim_partial(self._model.parameters())
+        self._optimizer = self.train_cfg.optim_partial(self._model.parameters())
 
         # NOTE: It is important to reseed the generators here to ensure the tests pass across flower and non flower runs.
         self.train_loader_map = self._create_shuffled_loaders(self.training_set, self.cfg.seeds)
         for seed, model in self._model_map.items():
             model.load_state_dict(train_ins.in_params)
-            self._optimizer_map[seed] = self.optim_partial(model.parameters())
+            self._optimizer_map[seed] = self.train_cfg.optim_partial(model.parameters())
             # self.metric_mngr.json_dump(self.train_loader_map[seed].dataset.indices.tolist(), 'indices', 'train', f'seed_{seed}')
         # Run an round on the client
         empty_grads = {p_key: torch.empty_like(param.data, device=self.train_cfg.device) for p_key, param in self._model.named_parameters()}
@@ -198,8 +195,7 @@ class FedgradstdClient(BaseFlowerClient):
         for seed, model in self._model_map.items():  
             # logger.info(f'SEED: {seed}, STATE: {self._generator[seed].get_state()}')
             # set optimizer parameters
-            # optimizer: Optimizer = self.optim_partial(model.parameters())
-            optimizer: Optimizer = self._optimizer_map[seed]
+            optimizer = self._optimizer_map[seed]
 
             model.train()
             model.to(self.train_cfg.device)
