@@ -22,6 +22,7 @@ from fedora.strategy.fedstdev import FedstdevStrategy
 from fedora.strategy.fedgradstd import FedgradstdStrategy
 from fedora.strategy.ties import TiesStrategy
 from fedora.strategy.cgsv import CgsvStrategy
+from fedora.strategy.rffl import RFFLStrategy
 
 
 # from fedora.utils import Range, get_free_gpus, arg_check, get_free_gpu
@@ -67,6 +68,7 @@ STRATEGY_MAPS = {
     "ties": TiesStrategy,
     "fedstdev": FedstdevStrategy,
     "fedgradstd": FedgradstdStrategy,
+    "rffl": RFFLStrategy
 }
 
 
@@ -84,19 +86,19 @@ class ClientSchema:
 
     name: str
     cfg: ClientConfig
-    train_cfg: TrainConfig
+    # train_cfg: TrainConfig
 
 
 @dataclass
 class ServerSchema:
     name: str
     cfg: ServerConfig
-    train_cfg: TrainConfig
+    # train_cfg: TrainConfig
 
 
 def get_client_partial(client_schema: ClientSchema) -> partial[BaseFlowerClient]:
     return partial_initialize_module(
-        CLIENT_MAPS, client_schema, ignore_args=["client_id", "model", "dataset"]
+        CLIENT_MAPS, client_schema, pending_args=["client_id", "model", "dataset", "train_cfg"]
     )
 
 
@@ -104,13 +106,13 @@ def get_server_partial(server_schema: ServerSchema) -> partial[BaseFlowerServer]
     return partial_initialize_module(
         SERVER_MAPS,
         server_schema,
-        ignore_args=["clients", "model", "strategy", "dataset", "result_manager"],
+        pending_args=["clients", "model", "strategy", "dataset", "result_manager", "train_cfg"],
     )
 
 
 def get_strategy_partial(strategy_schema: StrategySchema) -> partial[FedAvgStrategy]:
     return partial_initialize_module(
-        STRATEGY_MAPS, strategy_schema, ignore_args=["model", "res_man"]
+        STRATEGY_MAPS, strategy_schema, pending_args=["model", "res_man"]
     )
 
 
@@ -153,8 +155,8 @@ class Config:
 
         if self.train_cfg.device is None:
             self.train_cfg.device = self.simulator.device
-            self.server.train_cfg.device = self.simulator.device
-            self.client.train_cfg.device = self.simulator.device
+            # self.server.train_cfg.device = self.simulator.device
+            # self.client.train_cfg.device = self.simulator.device
 
         # if self.train_cfg.device == "mps" or self.train_cfg.device == "cpu":
         #     # GPU support in flower for MPS is not available
@@ -184,8 +186,11 @@ def set_debug_mode(cfg: Config):
     logger.debug(f"[Debug Override] Setting use_wandb to: {cfg.result.use_wandb}")
     cfg.simulator.num_rounds = 2
     logger.debug(f"[Debug Override] Setting rounds to: {cfg.simulator.num_rounds}")
-    cfg.client.train_cfg.epochs = 1
-    logger.debug(f"[Debug Override] Setting epochs to: {cfg.client.train_cfg.epochs}")
+    # cfg.client.train_cfg.epochs = 1
+    cfg.train_cfg.epochs = 1
+
+    # logger.debug(f"[Debug Override] Setting epochs to: {cfg.client.train_cfg.epochs}")
+    logger.debug(f"[Debug Override] Setting epochs to: {cfg.train_cfg.epochs}")
 
     cfg.simulator.num_clients = 3
     cfg.split.num_splits = 3

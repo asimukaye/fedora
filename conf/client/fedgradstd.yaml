@@ -10,4 +10,4 @@ cfg:
   seeds: [15, 25, 35, 45, 55]
   # seeds: [15, 25w]
   abs_before_mean: true
-train_cfg: ${train_cfg}
+# train_cfg: ${train_cfg}

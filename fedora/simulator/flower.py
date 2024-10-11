@@ -8,11 +8,17 @@ from torch.nn import Module
 from torch.backends import mps
 from torch.utils.data import Dataset
 import flwr as fl
+
 # from hydra.utils import instantiate
 
 from fedora.utils import generate_client_ids
 from fedora.config.masterconf import Config
-from fedora.simulator.utils import find_client_checkpoint, find_server_checkpoint, make_client_checkpoint_dirs, make_server_checkpoint_dirs
+from fedora.simulator.utils import (
+    find_client_checkpoint,
+    find_server_checkpoint,
+    make_client_checkpoint_dirs,
+    make_server_checkpoint_dirs,
+)
 
 from fedora.results.resultmanager import ResultManager
 from fedora.client.baseclient import BaseFlowerClient
@@ -21,6 +27,7 @@ import fedora.customtypes as fT
 
 
 logger = logging.getLogger(__name__)
+
 
 def run_flower_simulation(
     cfg: Config,
@@ -46,15 +53,17 @@ def run_flower_simulation(
 
     if torch.cuda.is_available():
         # Device has to be cuda 0 as flower creates its own device namespace while running
-        cfg.client.train_cfg.device = "cuda:0"
-        cfg.server.train_cfg.device = "cuda:0"
+        # cfg.client.train_cfg.device = "cuda:0"
+        # cfg.server.train_cfg.device = "cuda:0"
+        cfg.train_cfg.device = "cuda:0"
     # elif mps.is_available():
     #     # MPS support is still not mature in PyTorch and Flower
     #     cfg.client.train_cfg.device = "mps"
     #     cfg.server.train_cfg.device = "mps"
     else:
-        cfg.client.train_cfg.device = "cpu"
-        cfg.server.train_cfg.device = "cpu"
+        # cfg.client.train_cfg.device = "cpu"
+        # cfg.server.train_cfg.device = "cpu"
+        cfg.train_cfg.device = "cpu"
 
     result_manager = ResultManager(cfg.result, logger=logger)
 
@@ -64,6 +73,7 @@ def run_flower_simulation(
     flwr_strategy_partial = cfg.server_partial
 
     flwr_strategy = flwr_strategy_partial(
+        train_cfg=cfg.train_cfg,
         model=model,
         dataset=server_dataset,
         clients=clients,
@@ -77,7 +87,7 @@ def run_flower_simulation(
     #     _datasets = client_datasets_map[cid]
 
     #     return client_partial(client_id=cid, dataset=_datasets, model=_model)
-    
+
     def _client_fn(context: fl.common.Context):
         logger.info(context.node_id)
         logger.info(context.node_config)
@@ -85,20 +95,22 @@ def run_flower_simulation(
         partition_id = int(context.node_config["partition_id"])
         with open(f"client_{partition_id}.json", "w") as f:
             json.dump(context.__dict__, f)
-            
+
         # client_partial: partial = instantiate(cfg.client)
         client_partial = cfg.client_partial
-    
+
         # cid = str(context.node_id)
         partition_id = int(context.node_config["partition_id"])
         with open(f"client_{partition_id}.json", "w") as f:
             json.dump(context.__dict__, f)
-        cid = str(f'{partition_id:04}')
+        cid = str(f"{partition_id:04}")
         _model = deepcopy(model)
         # _datasets = client_datasets_map[cid]
         _datasets = client_datasets[partition_id]
 
-        return client_partial(client_id=cid, dataset=_datasets, model=_model)
+        return client_partial(
+            client_id=cid, dataset=_datasets, model=_model, train_cfg=cfg.train_cfg
+        )
 
     # Flower simulation arguments
     # runtime_env = {"env_vars": {"CUDA_VISIBLE_DEVICES": ",".join(map(str, gpu_ids))}}
@@ -116,6 +128,7 @@ def run_flower_simulation(
         client_resources=cfg.simulator.flwr_resources,
     )
 
+
 def run_flower_standalone_simulation(
     cfg: Config,
     client_datasets: fT.ClientDatasets_t,
@@ -123,4 +136,3 @@ def run_flower_standalone_simulation(
     model: Module,
 ):
     pass
-

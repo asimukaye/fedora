@@ -1,22 +1,21 @@
 %YAML 1.2
 ---
-# mode: fedavg
+# mode: rffl
 # mode: centralized
 mode: debug
-desc: "FedAvg run with fednet model and cifar10 dataset, iid, 500 rounds, 1 epoch, no resize"
+desc: "RFFL run with iid cidar 10 dataset, fednet model, and baseflower client, 500 rounds 1 epoch "
 # desc: "Centralized training w epochs and rounds interchanged. sanity check"
-
 
 defaults:
   - base_config
   - hydra: custom
   - server: baseflower
-  - strategy: base
+  # - strategy: base
   # - strategy: fedavgmanual
   # - strategy: fedstdev
   # - strategy: fedgradstd
   # - strategy: fedopt
-  # - strategy: cgsv
+  - strategy: rffl
   # - client: fedstdev
   # - client: fedgradstd
   - client: baseflower
@@ -35,22 +34,13 @@ simulator:
   # Simulator Mode: Takes arguments 'federated', 'standalone' or 'centralized', 'flower'
   # mode: standalone
   # mode: centralized
-  device: auto
   mode: federated
-  # mode: flower 
+  # mode: flower
+  device: auto
   seed: 42
-  # use_tensorboard: false
-  # use_wandb: true
-  # save_csv: true
-  # out_prefix: ''
   num_clients: 6
   num_rounds: 500
-  checkpoint_every: 10
-  # eval_type: both
-  # eval_every: 1
-  # flwr_resources:
-  #   num_cpus: 2
-  #   num_gpus: 0.5 #TODO: Couple this with device init
+  checkpoint_every: 20
 
 result:
   use_tensorboard: false
@@ -78,7 +68,6 @@ train_cfg:
 # CONFIG OVERRIDES
 
 dataset:
-  # subsample: false
   subsample_fraction: 1.0 # Fraction of the dataset to use. Only works when subsample is true
 
 model_init:
@@ -94,38 +83,7 @@ model_init:
 
 # ########## OVERRIDES END HERE ##########
 # Log Configuration: Additional configurations to be copied in the results summary section. Must be a valid configuration from the config tree.
-# Experiment mode: Switch between debug and experiment methods
-# mode: fedstdev_centralized
-# mode: centralized
-# mode: fedavg_patho
-# mode: fedavg_dirichlet
-# mode: fedavgmanual
-# mode: standalone
-# mode: fedstdev
-# mode: fedgradstd
-# mode: fedgradstd_patho
-# mode: fedgradstd_dirichlet
-# mode: fedopt_patho
-# mode: fedopt
-# mode: debug
-# mode: cgsv
-# desc: 'Centralized run with three label flipped client'
-# desc: 'Centralized run with three noisy client'
-# desc: 'Fedgradstd client dirichlet split with equal weighting strategy'
-# desc: 'Fedgradstd client with equal weighting strategy'
-# desc: 'Fedgradstd dry runs for analyzing different metrics with three label flipped clients and 25 % data'
-# desc: 'Fedgradstd run with dirichlet split,5 shuffles only'
-# desc: 'Fedavg run with bloodmnist iid'
-# desc: 'Centralized run with bloodmnist iid'
-
-# desc: Fedopt with patho split
-# desc: CGSV run with three label fliped clients
-# desc: 'Fedavg run with dirichlet split, alpha 10000, checking dirichlet correctness'
-# desc: 'Fedavg manual run with three noisy clients'
-
-# desc: 'Fedavg manual run with three label flipped client'
-
-
 log_cfg: []
+
 
 ...

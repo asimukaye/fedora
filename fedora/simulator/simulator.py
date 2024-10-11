@@ -49,11 +49,11 @@ def set_global_n_iters(cfg: Config, client_sets: fT.ClientDatasets_t):
     total_size = sum([len(train_set) for train_set, _ in client_sets])
 
     per_client_set_size = total_size // cfg.simulator.num_clients
-    cfg.client.cfg.n_iters = per_client_set_size // cfg.client.train_cfg.batch_size + (
-        1 if per_client_set_size % cfg.client.train_cfg.batch_size else 0
+    cfg.client.cfg.n_iters = per_client_set_size // cfg.train_cfg.batch_size + (
+        1 if per_client_set_size % cfg.train_cfg.batch_size else 0
     )
     logger.debug(f"[DATA_SPLIT] N iters: `{cfg.client.cfg.n_iters}`")
-    logger.debug(f"[DATA_SPLIT] batch size : `{cfg.client.train_cfg.batch_size}`")
+    logger.debug(f"[DATA_SPLIT] batch size : `{cfg.train_cfg.batch_size}`")
     return cfg
 
 

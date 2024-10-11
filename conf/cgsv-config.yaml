@@ -1,14 +1,16 @@
 %YAML 1.2
 ---
-mode: ties
+mode: cgsv
 # mode: debug
-desc: "Ties with twocnn model and cifar10 dataset, patho 3 cls/client, K = 0.2, lamba = 1.0, 200 rounds, 1 epochs"
+desc: "CGSV run with iid cidar 10 dataset, fednet model, and baseflower client, 500 rounds 1 epoch "
+# desc: "Centralized training w epochs and rounds interchanged. sanity check"
 
 defaults:
   - base_config
   - hydra: custom
   - server: baseflower
-  - strategy: ties
+  - strategy: cgsv
+
   - client: baseflower
   - dataset: cifar10
   - split: iid
@@ -16,30 +18,28 @@ defaults:
   # - dataset: fedisic
   # - model: resnet18gn
   # - model: resnet18
-  - model: twocnn
+  # - model: twocnn
+  - model: fednet
   - _self_
 
 simulator:
   # Simulator Mode: Takes arguments 'federated', 'standalone' or 'centralized', 'flower'
   mode: federated
   # mode: flower 
+  device: auto
   seed: 42
+  num_clients: 6
+  num_rounds: 500
+  checkpoint_every: 20
+
+result:
   use_tensorboard: false
   use_wandb: true
   save_csv: true
-  out_prefix: ''
-  num_clients: 6
-  num_rounds: 200
-  checkpoint_every: 10
-  eval_type: both
-  eval_every: 1
-  flwr_resources:
-    num_cpus: 2
-    num_gpus: 0.5 #TODO: Couple this with device init
+  # out_prefix: ''
 
 train_cfg:
   epochs: 1
-  device: auto
   batch_size: 128
   eval_batch_size: 128
   optimizer:
@@ -63,12 +63,10 @@ model_init:
   init_type: xavier
   init_gain: 1.0
 
-strategy:
-  cfg:
-    K: 0.2
-    lamda: 1.0
 
-
+# ########## OVERRIDES END HERE ##########
+# Log Configuration: Additional configurations to be copied in the results summary section. Must be a valid configuration from the config tree.
 log_cfg: []
+
 
 ...

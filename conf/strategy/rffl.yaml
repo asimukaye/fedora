@@ -1,9 +1,9 @@
 defaults:
   - 'strategy_schema'
-  - cfg: cgsv
+  - cfg: rffl
   - _self_
 
-name: cgsv
+name: rffl
 cfg:
   train_fraction: 1.0
   eval_fraction: 1.0

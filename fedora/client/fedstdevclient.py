@@ -51,7 +51,7 @@ def train_one_model(
             # accumulate metrics
             mm.track(loss.item(), outputs, targets)
         else:
-            out_result = mm.aggregate(len(list(dataloader.dataset)), _epoch)
+            out_result = mm.aggregate(len(list(dataloader.dataset)), _epoch) # type: ignore
             mm.flush()
     return (seed, model, out_result)
 
@@ -327,7 +327,7 @@ class FedstdevClient(BaseFlowerClient):
                     self.train_cfg,
                     self.train_cfg.optim_partial,
                     self.loss_fn,
-                    deepcopy(self.metric_mngr),
+                    deepcopy(self.metric_mngr), # type: ignore
                 )
                 for seed, model in self._model_map.items()
             }

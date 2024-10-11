@@ -60,10 +60,7 @@ LOSS_MAP = {
 
 def get_module_args(map: dict, obj: dict, ignore_args: list = []):
     if is_dataclass(obj):
-        # ic(obj.__dict__)      
-        # obj = asdict(obj)
         obj_dict = obj.__dict__.copy()
-        # ic(obj)
     elif isinstance(obj, dict):
         obj_dict = obj.copy()
     else:
@@ -103,8 +100,8 @@ def initialize_module(map: dict, obj):
     return module(**args)
 
 
-def partial_initialize_module(map: dict, obj, ignore_args: list):
-    module, args = get_module_args(map, obj, ignore_args=ignore_args)
+def partial_initialize_module(map: dict, obj, pending_args: list):
+    module, args = get_module_args(map, obj, ignore_args=pending_args)
     return partial(module, **args)
 
 def default_resources():
@@ -247,9 +244,9 @@ class TrainConfig:
     device: Optional[str] = field(default=None)
 
     def __post_init__(self):
-        self.optim_partial: partial[Optimizer] = partial_initialize_module(OPTIMIZER_MAP, self.optimizer, ignore_args=["params"])
+        self.optim_partial: partial[Optimizer] = partial_initialize_module(OPTIMIZER_MAP, self.optimizer, pending_args=["params"])
         if self.lr_scheduler:
-            self.lr_scheduler_partial: partial[LRScheduler] = partial_initialize_module(LRSCHEDULER_MAP, self.lr_scheduler, ignore_args=["optimizer"])
+            self.lr_scheduler_partial: partial[LRScheduler] = partial_initialize_module(LRSCHEDULER_MAP, self.lr_scheduler, pending_args=["optimizer"])
         self.loss_fn: Module = LOSS_MAP[self.loss_name]()
 
         assert self.batch_size >= 1

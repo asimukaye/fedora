@@ -6,13 +6,20 @@ from collections import defaultdict
 import torch
 from torch.nn import Module
 from torch.utils.data import Dataset, DataLoader, Subset
+
 # from hydra.utils import instantiate
 
 from fedora.config.masterconf import Config, ClientSchema, get_client_partial
 from fedora.results.resultmanager import ResultManager
 from fedora.results.metricmanager import MetricManager
 from fedora.client.abcclient import simple_evaluator
-from fedora.simulator.utils import find_client_checkpoint, find_server_checkpoint, make_client_checkpoint_dirs, make_server_checkpoint_dirs, parameter_average_aggregation
+from fedora.simulator.utils import (
+    find_client_checkpoint,
+    find_server_checkpoint,
+    make_client_checkpoint_dirs,
+    make_server_checkpoint_dirs,
+    parameter_average_aggregation,
+)
 from fedora.client.baseclient import BaseFlowerClient
 from fedora.server.baseserver import BaseFlowerServer
 from fedora.utils import generate_client_ids, log_tqdm
@@ -23,7 +30,11 @@ logger = logging.getLogger(__name__)
 
 
 def create_clients(
-    all_client_ids, client_datasets, model_instance, client_partial: partial[BaseFlowerClient]
+    all_client_ids,
+    train_cfg,
+    client_datasets,
+    model_instance,
+    client_partial: partial[BaseFlowerClient],
 ) -> dict[str, BaseFlowerClient]:
 
     clients = {}
@@ -32,7 +43,10 @@ def create_clients(
     ):
         # client_id = f'{idx:04}' # potential to convert to a unique hash
         client_obj: BaseFlowerClient = client_partial(
-        client_id=cid, dataset=datasets, model=deepcopy(model_instance)
+            train_cfg=train_cfg,
+            client_id=cid,
+            dataset=datasets,
+            model=deepcopy(model_instance),
         )
         # client_obj = _create_client(cid, datasets, model_instance, client_cfg)
         clients[cid] = client_obj
@@ -72,12 +86,17 @@ def run_federated_simulation(
 
     # NOTE:IMPORTANT Sharing models without deepcopy could potentially have same references to parameters
     clients = create_clients(
-        all_client_ids, client_datasets, model_instance, cfg.client_partial
+        all_client_ids,
+        cfg.train_cfg,
+        client_datasets,
+        model_instance,
+        cfg.client_partial,
     )
 
     # NOTE: later, consider making a copy of client to avoid simultaneous edits to clients dictionary
 
     server: BaseFlowerServer = cfg.server_partial(
+        train_cfg=cfg.train_cfg,
         model=model_instance,
         strategy=strategy,
         dataset=server_dataset,
@@ -148,8 +167,6 @@ def run_standalone_simulation(
     # Clients get the splits of the train set with an inbuilt test set
     all_client_ids = generate_client_ids(cfg.simulator.num_clients)
 
-
-
     test_loader = DataLoader(
         dataset=server_dataset, batch_size=cfg.train_cfg.eval_batch_size, shuffle=False
     )
@@ -160,12 +177,13 @@ def run_standalone_simulation(
 
     base_client_cfg = ClientSchema(
         name="BaseFlowerClient",
-        cfg=cfg.client.cfg,
-        train_cfg=cfg.train_cfg,
+        cfg=cfg.client.cfg
     )
-    
+
     client_partial = get_client_partial(base_client_cfg)
-    clients = create_clients(all_client_ids, client_datasets, model, client_partial)
+    clients = create_clients(
+        all_client_ids, cfg.train_cfg, client_datasets, model, client_partial
+    )
 
     if cfg.resumed:
         client_ckpts = {cid: find_client_checkpoint(cid) for cid in all_client_ids}
@@ -223,7 +241,6 @@ def run_standalone_simulation(
             central_eval, phase="post_train", actor="sim", event="central_eval"
         )
 
-
         result_manager.log_clients_result(
             train_result, phase="post_train", event="local_train"
         )
@@ -232,9 +249,9 @@ def run_standalone_simulation(
         )
 
         if curr_round % cfg.simulator.checkpoint_every == 0:
-           # FIXME: Add step count and round logic to the checkpointing system
-           torch.save(central_model.state_dict(), f"central_model_{curr_round}.pth")
-        
+            # FIXME: Add step count and round logic to the checkpointing system
+            torch.save(central_model.state_dict(), f"central_model_{curr_round}.pth")
+
         result_manager.flush_and_update_round(curr_round)
 
     final_result = result_manager.finalize()
@@ -254,7 +271,7 @@ def run_single_client(
     make_client_checkpoint_dirs(client_ids=["single_client"])
 
     # Modify the dataset here:
- 
+
     logger.info(f"[DATA_SPLIT] Simulated dataset split : `{cfg.split.name}`")
 
     result_manager = ResultManager(cfg.result, logger=logger)

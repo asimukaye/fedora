@@ -73,6 +73,27 @@ class CGSVConfig(StrategyConfig):
         assert self.alpha == Range(0.0, 1.0), f"Invalid value {self.alpha} for alpha"
         assert self.beta >= 1.0, f"Invalid value {self.beta} for beta"
 
+
+@dataclass
+class RFFLConfig(StrategyConfig):
+    num_clients: int
+    beta: float = 1.5
+    alpha: float = 0.95
+    gamma: float = 0.15
+    delta_normalize: bool = False
+    sparsify_gradients: bool = False
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.delta_normalize:
+            assert (
+                self.gamma > 0.0
+            ), "Gamma should be greater than 0 for delta normalization"
+        assert self.alpha == Range(0.0, 1.0), f"Invalid value {self.alpha} for alpha"
+        assert self.beta >= 1.0, f"Invalid value {self.beta} for beta"
+        self.shard_sizes = [1] * self.num_clients
+
+
 @dataclass
 class FedavgManualConfig(StrategyConfig):
     weights: list[float]
@@ -91,7 +112,7 @@ class FedavgManualConfig(StrategyConfig):
 def register_strategy_configs():
     cs = ConfigStore.instance()
     
-    cs.store(group="strategy/cfg", name="base_cgsv", node=CGSVConfig)
+    cs.store(group="strategy/cfg", name="rffl", node=RFFLConfig)
     cs.store(group="strategy/cfg", name="base_strategy", node=StrategyConfig)
     cs.store(group="strategy/cfg", name="fedavgmanual", node=FedavgManualConfig)
     cs.store(group="strategy/cfg", name="fedopt", node=FedOptConfig)
